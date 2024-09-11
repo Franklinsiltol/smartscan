@@ -2,34 +2,34 @@ const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const captureBtn = document.getElementById('capture-btn');
 const shareBtn = document.getElementById('share-btn');
+const newScanBtn = document.getElementById('new-scan-btn');
 const nomeField = document.getElementById('nome');
 const enderecoField = document.getElementById('endereco');
 const emailField = document.getElementById('email');
 const telefoneField = document.getElementById('telefone');
 const results = document.getElementById('results');
-const overlay = document.getElementById('overlay');
+const loadingOverlay = document.getElementById('loading-overlay');
 
 // Inicializa a câmera traseira
-navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { exact: 'environment' } }
+navigator.mediaDevices.getUserMedia({ 
+    video: { facingMode: { exact: "environment" } }
 })
-.then(stream => {
-    video.srcObject = stream;
-    video.play();
-})
-.catch(error => console.error('Erro ao acessar a câmera traseira', error));
+    .then(stream => {
+        video.srcObject = stream;
+    })
+    .catch(error => console.error('Erro ao acessar a câmera traseira', error));
 
 // Captura a imagem do vídeo
 captureBtn.addEventListener('click', () => {
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    canvas.style.display = 'block';
+    
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    video.style.display = 'none';
-    captureBtn.style.display = 'none';
-    canvas.style.display = 'block';
-    overlay.style.display = 'flex';
+    // Exibe o overlay de loading
+    loadingOverlay.style.display = 'flex';
 
     processImage(canvas);
 });
@@ -40,12 +40,13 @@ function processImage(image) {
         logger: m => console.log(m)
     }).then(({ data: { text } }) => {
         extractInformation(text);
-        overlay.style.display = 'none';
+        loadingOverlay.style.display = 'none';  // Esconde o overlay após o processamento
         results.classList.remove('hidden');
         shareBtn.classList.remove('hidden');
+        newScanBtn.classList.remove('hidden');
     }).catch(error => {
         console.error('Erro no processamento de imagem', error);
-        overlay.style.display = 'none';
+        loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro
     });
 }
 
@@ -73,4 +74,14 @@ shareBtn.addEventListener('click', () => {
     navigator.share(shareData)
         .then(() => console.log('Informações compartilhadas com sucesso'))
         .catch((error) => console.error('Erro ao compartilhar', error));
+});
+
+// Novo Scan
+newScanBtn.addEventListener('click', () => {
+    video.style.display = 'block';
+    captureBtn.style.display = 'block';
+    canvas.style.display = 'none';
+    results.classList.add('hidden');
+    shareBtn.classList.add('hidden');
+    newScanBtn.classList.add('hidden');
 });

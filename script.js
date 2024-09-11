@@ -1,6 +1,8 @@
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const captureBtn = document.getElementById('capture-btn');
+const newScanBtn = document.getElementById('new-scan-btn');
+const shareBtn = document.getElementById('share-btn');
 const nomeField = document.getElementById('nome');
 const cargoField = document.getElementById('cargo');
 const emailField = document.getElementById('email');
@@ -40,6 +42,9 @@ function processImage(image) {
         extractInformation(text);
         loadingOverlay.style.display = 'none';  // Esconde o overlay após o processamento
         results.classList.remove('hidden');
+        newScanBtn.classList.remove('hidden');
+        shareBtn.classList.remove('hidden');
+        captureBtn.classList.add('hidden');
     }).catch(error => {
         console.error('Erro no processamento de imagem', error);
         loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro
@@ -54,3 +59,30 @@ function extractInformation(text) {
     emailField.value = lines.find(line => line.includes('@')) || '';
     telefoneField.value = lines.find(line => line.match(/(\(?\d{2}\)?\s)?(\d{4,5}\-\d{4})/)) || '';
 }
+
+// Reinicia o processo de scan
+newScanBtn.addEventListener('click', () => {
+    results.classList.add('hidden');
+    newScanBtn.classList.add('hidden');
+    shareBtn.classList.add('hidden');
+    captureBtn.classList.remove('hidden');
+    canvas.style.display = 'none';
+    video.play();  // Retorna ao vídeo ao vivo da câmera
+});
+
+// Compartilhar as informações
+shareBtn.addEventListener('click', () => {
+    const nome = nomeField.value;
+    const cargo = cargoField.value;
+    const email = emailField.value;
+    const telefone = telefoneField.value;
+
+    const shareData = {
+        title: 'Informações de Contato',
+        text: `Nome: ${nome}\nCargo: ${cargo}\nEmail: ${email}\nTelefone: ${telefone}`
+    };
+
+    navigator.share(shareData)
+        .then(() => console.log('Informações compartilhadas com sucesso'))
+        .catch((error) => console.error('Erro ao compartilhar', error));
+});

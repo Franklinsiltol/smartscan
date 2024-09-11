@@ -1,7 +1,6 @@
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const captureBtn = document.getElementById('capture-btn');
-const newScanBtn = document.getElementById('new-scan-btn');
 const shareBtn = document.getElementById('share-btn');
 const nomeField = document.getElementById('nome');
 const enderecoField = document.getElementById('endereco');
@@ -43,7 +42,6 @@ function processImage(image) {
         extractInformation(text);
         overlay.style.display = 'none';
         results.classList.remove('hidden');
-        newScanBtn.classList.remove('hidden');
         shareBtn.classList.remove('hidden');
     }).catch(error => {
         console.error('Erro no processamento de imagem', error);
@@ -59,17 +57,6 @@ function extractInformation(text) {
     emailField.value = lines.find(line => line.includes('@')) || '';
     telefoneField.value = lines.find(line => line.match(/(\(?\d{2}\)?\s)?(\d{4,5}\-\d{4})/)) || '';
 }
-
-// Reinicia o processo de scan
-newScanBtn.addEventListener('click', () => {
-    results.classList.add('hidden');
-    newScanBtn.classList.add('hidden');
-    shareBtn.classList.add('hidden');
-    captureBtn.style.display = 'block';
-    video.style.display = 'block';
-    canvas.style.display = 'none';
-    video.play();
-});
 
 // Compartilhar as informações
 shareBtn.addEventListener('click', () => {

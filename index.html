@@ -11,20 +11,20 @@
         <h1>Leitor de Cartão de Visita</h1>
         <div class="camera-container">
             <video id="camera" autoplay></video>
-            <canvas id="canvas"></canvas>
+            <canvas id="canvas" class="hidden"></canvas>
             <div class="overlay"></div>
         </div>
         <button id="capture-btn">Capturar</button>
 
-        <div id="results">
+        <div id="results" class="hidden">
             <h2>Informações Extraídas</h2>
             <p><strong>Nome:</strong> <input type="text" id="nome" placeholder="Nome não encontrado"></p>
             <p><strong>Cargo:</strong> <input type="text" id="cargo" placeholder="Cargo não encontrado"></p>
             <p><strong>E-mail:</strong> <input type="text" id="email" placeholder="E-mail não encontrado"></p>
             <p><strong>Telefone:</strong> <input type="text" id="telefone" placeholder="Telefone não encontrado"></p>
         </div>
-        <button id="share-btn">Compartilhar Informações</button>
-        
+        <button id="share-btn" class="hidden">Compartilhar Informações</button>
+
         <div id="loading-overlay" class="hidden">Processando...</div>
     </div>
 

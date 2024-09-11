@@ -16,6 +16,7 @@ navigator.mediaDevices.getUserMedia({
 })
     .then(stream => {
         video.srcObject = stream;
+        video.play();  // Assegura que o vídeo está tocando
     })
     .catch(error => console.error('Erro ao acessar a câmera traseira', error));
 
@@ -25,7 +26,8 @@ captureBtn.addEventListener('click', () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.style.display = 'block';
-    
+
+    // Ajusta o canvas para o mesmo tamanho do vídeo
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Exibe o overlay de loading

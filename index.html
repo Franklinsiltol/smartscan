@@ -98,6 +98,15 @@
             z-index: 1000;
             display: none;
         }
+
+        /* Estilo do logo */
+        #logo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 80px;
+            opacity: 0.5; /* Logo discreto com transparência */
+        }
     </style>
 </head>
 <body>
@@ -120,7 +129,11 @@
             <input type="text" id="telefone" readonly>
         </div>
         <div id="loading-overlay">Processando...</div>
+
+        <!-- Logo Discreto -->
+        <img id="logo" src="https://logospng.org/wp-content/uploads/sumup-768x432.png" alt="Logo SumUp">
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
     <script>
         const video = document.getElementById('camera');

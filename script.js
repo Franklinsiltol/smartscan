@@ -6,6 +6,7 @@ const nomeField = document.getElementById('nome');
 const cargoField = document.getElementById('cargo');
 const emailField = document.getElementById('email');
 const telefoneField = document.getElementById('telefone');
+const results = document.getElementById('results');
 const loadingOverlay = document.getElementById('loading-overlay');
 
 // Inicializa a câmera traseira
@@ -22,6 +23,8 @@ captureBtn.addEventListener('click', () => {
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    canvas.style.display = 'block';
+    
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Exibe o overlay de loading
@@ -37,6 +40,8 @@ function processImage(image) {
     }).then(({ data: { text } }) => {
         extractInformation(text);
         loadingOverlay.style.display = 'none';  // Esconde o overlay após o processamento
+        results.classList.remove('hidden');
+        shareBtn.classList.remove('hidden');
     }).catch(error => {
         console.error('Erro no processamento de imagem', error);
         loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro

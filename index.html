@@ -3,33 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor de Cartão de Visita</title>
+    <title>Extrator de Cartão de Visita</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Leitor de Cartão de Visita</h1>
-        <div class="camera-container">
-            <video id="camera" autoplay></video>
-            <canvas id="canvas" class="hidden"></canvas>
-            <div class="overlay"></div>
+    <div id="container">
+        <video id="camera" autoplay></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <div id="overlay" class="hidden">
+            <div id="loading-overlay">
+                <p>Processando...</p>
+            </div>
         </div>
-        <button id="capture-btn">Capturar</button>
-        <button id="new-scan-btn" class="hidden">Novo Scan</button>
-
+        <div id="controls">
+            <button id="capture-btn">Capturar</button>
+            <button id="new-scan-btn" class="hidden">Novo Scan</button>
+            <button id="share-btn" class="hidden">Compartilhar</button>
+        </div>
         <div id="results" class="hidden">
-            <h2>Informações Extraídas</h2>
-            <p><strong>Nome:</strong> <input type="text" id="nome" placeholder="Nome não encontrado"></p>
-            <p><strong>Endereço:</strong> <input type="text" id="endereco" placeholder="Endereço não encontrado"></p>
-            <p><strong>E-mail:</strong> <input type="text" id="email" placeholder="E-mail não encontrado"></p>
-            <p><strong>Telefone:</strong> <input type="text" id="telefone" placeholder="Telefone não encontrado"></p>
+            <h2>Informações Extraídas:</h2>
+            <label>Nome:</label>
+            <input type="text" id="nome" readonly>
+            <label>Endereço:</label>
+            <input type="text" id="endereco" readonly>
+            <label>Email:</label>
+            <input type="text" id="email" readonly>
+            <label>Telefone:</label>
+            <input type="text" id="telefone" readonly>
         </div>
-        <button id="share-btn" class="hidden">Compartilhar Informações</button>
-
-        <div id="loading-overlay" class="hidden">Processando...</div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

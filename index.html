@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de Cartão de Visita</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Leitor de Cartão de Visita</h1>
+        <div class="camera-container">
+            <video id="camera" autoplay></video>
+            <canvas id="canvas"></canvas>
+            <div class="overlay"></div>
+        </div>
+        <button id="capture-btn">Capturar</button>
+        <button id="upload-btn">Enviar Foto</button>
+
+        <div id="results">
+            <h2>Informações Extraídas</h2>
+            <p><strong>Nome:</strong> <input type="text" id="nome" placeholder="Nome não encontrado"></p>
+            <p><strong>Cargo:</strong> <input type="text" id="cargo" placeholder="Cargo não encontrado"></p>
+            <p><strong>E-mail:</strong> <input type="text" id="email" placeholder="E-mail não encontrado"></p>
+            <p><strong>Telefone:</strong> <input type="text" id="telefone" placeholder="Telefone não encontrado"></p>
+        </div>
+        <button id="share-btn">Compartilhar Informações</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

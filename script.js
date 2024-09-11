@@ -26,9 +26,10 @@ captureBtn.addEventListener('click', () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.style.display = 'block';
-
-    // Ajusta o canvas para o mesmo tamanho do vídeo
+    
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    video.style.display = 'none'; // Oculta o vídeo
+    captureBtn.style.display = 'none'; // Oculta o botão de captura
 
     // Exibe o overlay de loading
     loadingOverlay.style.display = 'flex';
@@ -46,7 +47,6 @@ function processImage(image) {
         results.classList.remove('hidden');
         newScanBtn.classList.remove('hidden');
         shareBtn.classList.remove('hidden');
-        captureBtn.classList.add('hidden');
     }).catch(error => {
         console.error('Erro no processamento de imagem', error);
         loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro
@@ -67,9 +67,9 @@ newScanBtn.addEventListener('click', () => {
     results.classList.add('hidden');
     newScanBtn.classList.add('hidden');
     shareBtn.classList.add('hidden');
-    captureBtn.classList.remove('hidden');
-    canvas.style.display = 'none';
-    video.play();  // Retorna ao vídeo ao vivo da câmera
+    captureBtn.style.display = 'block';
+    video.style.display = 'block';  // Exibe novamente o vídeo
+    canvas.style.display = 'none';  // Esconde o canvas
 });
 
 // Compartilhar as informações

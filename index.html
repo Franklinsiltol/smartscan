@@ -4,21 +4,109 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Extrator de Cartão de Visita</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: white;
+            color: black;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #camera {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            background-color: black;
+            display: block;
+        }
+
+        #canvas {
+            display: none;
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            gap: 10px;
+        }
+
+        button {
+            background-color: black;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #333;
+        }
+
+        #results {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #results label {
+            margin-top: 5px;
+        }
+
+        #results input {
+            width: calc(100% - 22px);
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Overlay de carregamento */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            border-radius: 10px;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div id="container">
         <video id="camera" autoplay></video>
         <canvas id="canvas" style="display: none;"></canvas>
-        <div id="overlay" class="hidden">
-            <div id="loading-overlay">
-                <p>Processando...</p>
-            </div>
-        </div>
         <div id="controls">
             <button id="capture-btn">Capturar</button>
             <button id="share-btn" class="hidden">Compartilhar</button>
-            <button id="new-scan-btn" class="hidden">Novo Scan</button>
         </div>
         <div id="results" class="hidden">
             <h2>Informações Extraídas:</h2>
@@ -31,8 +119,116 @@
             <label>Telefone:</label>
             <input type="text" id="telefone" readonly>
         </div>
+        <div id="loading-overlay">Processando...</div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
-    <script src="script.js"></script>
+    <script>
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const nomeField = document.getElementById('nome');
+        const enderecoField = document.getElementById('endereco');
+        const emailField = document.getElementById('email');
+        const telefoneField = document.getElementById('telefone');
+        const results = document.getElementById('results');
+        const shareBtn = document.getElementById('share-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // Inicializa a câmera traseira
+        navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: { exact: "environment" } }
+        })
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(error => console.error('Erro ao acessar a câmera traseira', error));
+
+        // Captura a imagem do vídeo
+        captureBtn.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.style.display = 'block';
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Aplicar pré-processamento
+            preprocessImage(canvas);
+
+            // Exibe o overlay de loading
+            loadingOverlay.style.display = 'flex';
+
+            processImage(canvas);
+        });
+
+        // Aplica pré-processamento na imagem
+        function preprocessImage(canvas) {
+            const context = canvas.getContext('2d');
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Converter para escala de cinza
+            for (let i = 0; i < data.length; i += 4) {
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                data[i] = data[i + 1] = data[i + 2] = avg;
+            }
+            context.putImageData(imageData, 0, 0);
+
+            // Ajustar contraste e brilho (opcional)
+            // Implementar se necessário
+        }
+
+        // Processa a imagem usando Tesseract.js
+        function processImage(image) {
+            Tesseract.recognize(image, 'por', {
+                logger: m => console.log(m)
+            }).then(({ data: { text } }) => {
+                extractInformation(text);
+                results.classList.remove('hidden');
+                shareBtn.classList.remove('hidden');
+                loadingOverlay.style.display = 'none';  // Esconde o overlay após o processamento
+            }).catch(error => {
+                console.error('Erro no processamento de imagem', error);
+                results.classList.remove('hidden');
+                shareBtn.classList.remove('hidden');
+                loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro
+            });
+        }
+
+        // Extração de informações e permitindo edição manual
+        function extractInformation(text) {
+            const lines = text.split('\n');
+            nomeField.value = lines[0] || '';
+            enderecoField.value = lines[1] || '';
+            emailField.value = lines.find(line => line.includes('@')) || '';
+            telefoneField.value = lines.find(line => line.match(/(?\d{2}?\s)?(\d{4,5}\-\d{4})/)) || '';
+        }
+
+        // Compartilhar informações
+        shareBtn.addEventListener('click', () => {
+            const nome = nomeField.value;
+            const endereco = enderecoField.value;
+            const email = emailField.value;
+            const telefone = telefoneField.value;
+
+            const textToShare = `
+                Nome: ${nome}
+                Endereço: ${endereco}
+                Email: ${email}
+                Telefone: ${telefone}
+            `;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Informações do Cartão de Visita',
+                    text: textToShare,
+                    url: window.location.href
+                }).then(() => console.log('Informações compartilhadas com sucesso'))
+                  .catch((error) => console.error('Erro ao compartilhar', error));
+            } else {
+                alert('Compartilhamento não suportado neste navegador.');
+            }
+        });
+    </script>
 </body>
 </html>

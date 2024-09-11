@@ -1,14 +1,14 @@
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const captureBtn = document.getElementById('capture-btn');
-const shareBtn = document.getElementById('share-btn');
-const newScanBtn = document.getElementById('new-scan-btn');
 const nomeField = document.getElementById('nome');
 const enderecoField = document.getElementById('endereco');
 const emailField = document.getElementById('email');
 const telefoneField = document.getElementById('telefone');
 const results = document.getElementById('results');
 const loadingOverlay = document.getElementById('loading-overlay');
+const shareBtn = document.getElementById('share-btn');
+const newScanBtn = document.getElementById('new-scan-btn');
 
 // Inicializa a câmera traseira
 navigator.mediaDevices.getUserMedia({ 
@@ -59,21 +59,26 @@ function extractInformation(text) {
     telefoneField.value = lines.find(line => line.match(/(\(?\d{2}\)?\s)?(\d{4,5}\-\d{4})/)) || '';
 }
 
-// Compartilhar as informações
+// Compartilhar informações
 shareBtn.addEventListener('click', () => {
     const nome = nomeField.value;
     const endereco = enderecoField.value;
     const email = emailField.value;
     const telefone = telefoneField.value;
 
-    const shareData = {
-        title: 'Informações de Contato',
-        text: `Nome: ${nome}\nEndereço: ${endereco}\nEmail: ${email}\nTelefone: ${telefone}`
-    };
+    const textToShare = `
+        Nome: ${nome}
+        Endereço: ${endereco}
+        Email: ${email}
+        Telefone: ${telefone}
+    `;
 
-    navigator.share(shareData)
-        .then(() => console.log('Informações compartilhadas com sucesso'))
-        .catch((error) => console.error('Erro ao compartilhar', error));
+    navigator.share({
+        title: 'Informações do Cartão de Visita',
+        text: textToShare,
+        url: window.location.href
+    }).then(() => console.log('Informações compartilhadas com sucesso'))
+      .catch((error) => console.error('Erro ao compartilhar', error));
 });
 
 // Novo Scan

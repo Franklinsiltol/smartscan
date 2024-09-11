@@ -29,15 +29,27 @@ h1 {
     position: relative;
     width: 100%;
     max-width: 320px;
+    height: 240px; /* Altura fixa para garantir o retângulo */
     margin: auto;
+    overflow: hidden;
+    border-radius: 15px;
 }
 
-video, canvas {
+video {
     width: 100%;
-    height: auto;
-    border: 2px solid #000;
+    height: 100%;
+    object-fit: cover; /* Preenche todo o retângulo */
     border-radius: 15px;
-    aspect-ratio: 4 / 3; /* Define um formato retangular 4:3 */
+}
+
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 15px;
+    display: none;
 }
 
 .overlay {
@@ -64,6 +76,10 @@ button {
 button:hover {
     background-color: #333;
     color: #fff;
+}
+
+.hidden {
+    display: none;
 }
 
 #results {
@@ -99,9 +115,5 @@ input[type="text"] {
     align-items: center;
     font-size: 24px;
     z-index: 1000;
-    display: none;
-}
-
-.hidden {
     display: none;
 }

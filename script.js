@@ -4,7 +4,7 @@ const captureBtn = document.getElementById('capture-btn');
 const newScanBtn = document.getElementById('new-scan-btn');
 const shareBtn = document.getElementById('share-btn');
 const nomeField = document.getElementById('nome');
-const cargoField = document.getElementById('cargo');
+const enderecoField = document.getElementById('endereco');
 const emailField = document.getElementById('email');
 const telefoneField = document.getElementById('telefone');
 const results = document.getElementById('results');
@@ -55,7 +55,7 @@ function processImage(image) {
 function extractInformation(text) {
     const lines = text.split('\n');
     nomeField.value = lines[0] || '';
-    cargoField.value = lines[1] || '';
+    enderecoField.value = lines[1] || '';
     emailField.value = lines.find(line => line.includes('@')) || '';
     telefoneField.value = lines.find(line => line.match(/(\(?\d{2}\)?\s)?(\d{4,5}\-\d{4})/)) || '';
 }
@@ -73,13 +73,13 @@ newScanBtn.addEventListener('click', () => {
 // Compartilhar as informações
 shareBtn.addEventListener('click', () => {
     const nome = nomeField.value;
-    const cargo = cargoField.value;
+    const endereco = enderecoField.value;
     const email = emailField.value;
     const telefone = telefoneField.value;
 
     const shareData = {
         title: 'Informações de Contato',
-        text: `Nome: ${nome}\nCargo: ${cargo}\nEmail: ${email}\nTelefone: ${telefone}`
+        text: `Nome: ${nome}\nEndereço: ${endereco}\nEmail: ${email}\nTelefone: ${telefone}`
     };
 
     navigator.share(shareData)

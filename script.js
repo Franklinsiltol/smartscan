@@ -1,12 +1,12 @@
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const captureBtn = document.getElementById('capture-btn');
-const uploadBtn = document.getElementById('upload-btn');
 const shareBtn = document.getElementById('share-btn');
 const nomeField = document.getElementById('nome');
 const cargoField = document.getElementById('cargo');
 const emailField = document.getElementById('email');
 const telefoneField = document.getElementById('telefone');
+const loadingOverlay = document.getElementById('loading-overlay');
 
 // Inicializa a câmera traseira
 navigator.mediaDevices.getUserMedia({ 
@@ -23,6 +23,10 @@ captureBtn.addEventListener('click', () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Exibe o overlay de loading
+    loadingOverlay.style.display = 'flex';
+
     processImage(canvas);
 });
 
@@ -32,6 +36,10 @@ function processImage(image) {
         logger: m => console.log(m)
     }).then(({ data: { text } }) => {
         extractInformation(text);
+        loadingOverlay.style.display = 'none';  // Esconde o overlay após o processamento
+    }).catch(error => {
+        console.error('Erro no processamento de imagem', error);
+        loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro
     });
 }
 

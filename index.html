@@ -2,213 +2,156 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Party Wallet</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: white;
-      color: black;
-      margin: 0;
-      padding: 0;
-    }
-    h1 {
-      text-align: center;
-      margin-top: 20px;
-    }
-    .container {
-      width: 80%;
-      margin: auto;
-    }
-    .button {
-      background-color: black;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-      margin: 10px 0;
-    }
-    .button:hover {
-      background-color: gray;
-    }
-    .balance {
-      font-size: 24px;
-      margin-top: 20px;
-      text-align: center;
-    }
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-content {
-      background-color: white;
-      padding: 20px;
-      width: 60%;
-      max-height: 80%;
-      overflow-y: auto;
-      border-radius: 5px;
-    }
-    .history-card {
-      background-color: #f4f4f4;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 5px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .history-card.sent {
-      border-left: 5px solid green;
-    }
-    .history-card.received {
-      border-left: 5px solid blue;
-    }
-    .icon {
-      margin-right: 10px;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; background: white; color: black; }
+    .button { margin: 10px; padding: 10px 20px; background: black; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .balance { font-size: 24px; margin: 20px; }
+    .history { margin-top: 20px; text-align: left; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 20px; border-radius: 8px; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>QR Party Wallet</h1>
-  <div class="balance">Saldo: R$ <span id="saldo">1000,00</span></div>
-  
-  <button class="button" id="sendBtn">Enviar R$</button>
-  <button class="button" id="receiveBtn">Receber R$</button>
-  <button class="button" id="historyBtn">Ver Histórico</button>
+<h1>QR Party Wallet</h1>
 
-  <div id="qrcode" style="text-align: center; margin-top: 20px;"></div>
+<div class="balance">Saldo: R$ <span id="saldo">0,00</span></div>
 
-  <div class="modal" id="historyModal">
-    <div class="modal-content">
-      <h2>Histórico de Transações</h2>
-      <div id="historyList"></div>
-      <button class="button" id="closeHistory">Fechar</button>
-    </div>
+<canvas id="qrcode"></canvas>
+
+<div>
+  <button class="button" id="sendBtn">Enviar</button>
+  <button class="button" id="receiveBtn">Receber</button>
+  <button class="button" id="historyBtn">Histórico</button>
+</div>
+
+<!-- Modal para escanear QR Code -->
+<div id="scannerModal" class="modal">
+  <div class="modal-content">
+    <div id="reader" style="width: 300px; margin: auto;"></div>
+    <button class="button" id="closeScanner">Fechar</button>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<!-- Modal para histórico -->
+<div id="historyModal" class="modal">
+  <div class="modal-content">
+    <h2>Histórico</h2>
+    <div id="historyList"></div>
+    <button class="button" id="closeHistory">Fechar</button>
+  </div>
+</div>
+
 <script>
-  let userId = localStorage.getItem('userId') || Math.random().toString(36).substring(7);
-  let userName = localStorage.getItem('userName') || prompt("Digite seu nome:");
+  const gun = Gun();
+  let userId = localStorage.getItem('userId') || Math.random().toString(36).substr(2);
+  let userName = localStorage.getItem('userName') || prompt('Seu nome:') || "Anônimo";
+
   localStorage.setItem('userId', userId);
   localStorage.setItem('userName', userName);
 
-  let gun = Gun();
+  const saldoElem = document.getElementById('saldo');
+  const qrcodeCanvas = document.getElementById('qrcode');
+
   let saldo = 1000;
 
-  // Inicializa o saldo
-  gun.get(userId).put({ saldo: saldo, name: userName, transactions: [] });
-
-  // Gera o QR Code com ID único do usuário
-  QRCode.toCanvas(document.getElementById('qrcode'), userId, function (error) {
-    if (error) console.error(error);
-    console.log('QR Code gerado');
+  gun.get(userId).get('data').once(data => {
+    if (data) {
+      saldo = data.saldo || 1000;
+      updateSaldo();
+    } else {
+      gun.get(userId).get('data').put({ name: userName, saldo: saldo });
+    }
   });
 
-  document.getElementById('sendBtn').addEventListener('click', function() {
-    let amount = prompt("Quanto deseja enviar (R$)?");
-    amount = parseFloat(amount);
-    if (isNaN(amount) || amount <= 0 || amount > saldo) {
-      alert("Valor inválido.");
-      return;
-    }
-
-    alert("Aguardando escaneamento de QR Code.");
-    // Simulação de escaneamento de QR code
-    let recipientId = prompt("Digite o ID do destinatário escaneado:");
-
-    if (!recipientId) {
-      alert("QR Code inválido ou operação cancelada.");
-      return;
-    }
-
-    // Solicitar confirmação do destinatário
-    let confirmTransaction = confirm(`Você está prestes a enviar R$ ${amount.toFixed(2)} para ${recipientId}. Deseja confirmar?`);
-    if (!confirmTransaction) {
-      alert("Transação cancelada.");
-      return;
-    }
-
-    // Transação de envio
-    gun.get(recipientId).get('transactions').set({ type: 'received', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
-    gun.get(userId).get('transactions').set({ type: 'sent', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
-
-    saldo -= amount;
-    gun.get(userId).put({ saldo: saldo });
-
-    alert(`Você enviou R$ ${amount.toFixed(2)} para ${recipientId}.`);
-    document.getElementById('saldo').innerText = saldo.toFixed(2);
-  });
-
-  document.getElementById('receiveBtn').addEventListener('click', function() {
-    alert("Aguardando escaneamento de QR Code.");
-    // Simulação de escaneamento de QR code
-    let senderId = prompt("Digite o ID do remetente escaneado:");
-
-    if (!senderId) {
-      alert("QR Code inválido ou operação cancelada.");
-      return;
-    }
-
-    let amount = prompt("Quanto deseja receber (R$)?");
-    amount = parseFloat(amount);
-    if (isNaN(amount) || amount <= 0) {
-      alert("Valor inválido.");
-      return;
-    }
-
-    // Confirmação de recebimento
-    let confirmReceive = confirm(`Você está prestes a receber R$ ${amount.toFixed(2)} de ${senderId}. Deseja confirmar?`);
-    if (!confirmReceive) {
-      alert("Transação cancelada.");
-      return;
-    }
-
-    // Transação de recebimento
-    gun.get(senderId).get('transactions').set({ type: 'sent', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
-    gun.get(userId).get('transactions').set({ type: 'received', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
-
-    saldo += amount;
-    gun.get(userId).put({ saldo: saldo });
-
-    alert(`Você recebeu R$ ${amount.toFixed(2)} de ${senderId}.`);
-    document.getElementById('saldo').innerText = saldo.toFixed(2);
-  });
-
-  document.getElementById('historyBtn').addEventListener('click', function() {
-    document.getElementById('historyModal').style.display = 'flex';
-
-    let historyList = document.getElementById('historyList');
-    historyList.innerHTML = '';  // Limpar histórico atual
-
-    gun.get(userId).get('transactions').map().on(function(transaction) {
-      let card = document.createElement('div');
-      card.classList.add('history-card');
-      card.classList.add(transaction.type === 'sent' ? 'sent' : 'received');
-
-      let icon = transaction.type === 'sent' ? '<i class="fa fa-arrow-up icon"></i>' : '<i class="fa fa-arrow-down icon"></i>';
-      card.innerHTML = `${icon} ${transaction.user} enviou ${transaction.amount} em ${transaction.date}`;
-
-      historyList.appendChild(card);
+  function updateSaldo() {
+    saldoElem.innerText = saldo.toFixed(2);
+    QRCode.toCanvas(qrcodeCanvas, userId, function (error) {
+      if (error) console.error(error);
     });
-  });
+  }
 
-  document.getElementById('closeHistory').addEventListener('click', function() {
+  updateSaldo();
+
+  document.getElementById('sendBtn').onclick = () => {
+    openScanner('send');
+  };
+
+  document.getElementById('receiveBtn').onclick = () => {
+    openScanner('receive');
+  };
+
+  let scanner;
+  function openScanner(mode) {
+    document.getElementById('scannerModal').style.display = 'flex';
+    scanner = new Html5Qrcode("reader");
+    scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+      scanner.stop();
+      document.getElementById('scannerModal').style.display = 'none';
+      if (mode === 'send') sendMoney(decodedText);
+      else receiveMoney(decodedText);
+    });
+  }
+
+  function sendMoney(recipientId) {
+    let amount = parseFloat(prompt('Valor para enviar (R$):'));
+    if (isNaN(amount) || amount <= 0 || amount > saldo) {
+      alert('Valor inválido.');
+      return;
+    }
+    saldo -= amount;
+    updateSaldo();
+    gun.get(userId).get('history').set({ type: 'sent', to: recipientId, amount, date: new Date().toLocaleString() });
+    gun.get(recipientId).get('history').set({ type: 'received', from: userId, amount, date: new Date().toLocaleString() });
+    gun.get(userId).get('data').put({ saldo });
+    alert(`Enviado R$ ${amount.toFixed(2)} para ${recipientId}!`);
+  }
+
+  function receiveMoney(senderId) {
+    let amount = parseFloat(prompt('Valor para receber (R$):'));
+    if (isNaN(amount) || amount <= 0) {
+      alert('Valor inválido.');
+      return;
+    }
+    saldo += amount;
+    updateSaldo();
+    gun.get(userId).get('history').set({ type: 'received', from: senderId, amount, date: new Date().toLocaleString() });
+    gun.get(senderId).get('history').set({ type: 'sent', to: userId, amount, date: new Date().toLocaleString() });
+    gun.get(userId).get('data').put({ saldo });
+    alert(`Recebido R$ ${amount.toFixed(2)} de ${senderId}!`);
+  }
+
+  document.getElementById('closeScanner').onclick = () => {
+    if (scanner) scanner.stop();
+    document.getElementById('scannerModal').style.display = 'none';
+  };
+
+  document.getElementById('historyBtn').onclick = () => {
+    document.getElementById('historyModal').style.display = 'flex';
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = '';
+
+    gun.get(userId).get('history').map().once(item => {
+      if (item) {
+        let entry = document.createElement('div');
+        if (item.type === 'sent') {
+          entry.innerText = `Enviado R$ ${item.amount.toFixed(2)} para ${item.to} em ${item.date}`;
+        } else {
+          entry.innerText = `Recebido R$ ${item.amount.toFixed(2)} de ${item.from} em ${item.date}`;
+        }
+        historyList.appendChild(entry);
+      }
+    });
+  };
+
+  document.getElementById('closeHistory').onclick = () => {
     document.getElementById('historyModal').style.display = 'none';
-  });
+  };
 </script>
 
 </body>

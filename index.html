@@ -1,247 +1,215 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extrator de Cartão de Visita</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: white;
-            color: black;
-            font-family: Arial, sans-serif;
-        }
-
-        #container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        #camera {
-            width: 100%;
-            height: auto;
-            border-radius: 10px;
-            background-color: black;
-            display: block;
-        }
-
-        #canvas {
-            display: none;
-            width: 100%;
-            border-radius: 10px;
-        }
-
-        #controls {
-            display: flex;
-            justify-content: center;
-            margin-top: 10px;
-            gap: 10px;
-        }
-
-        button {
-            background-color: black;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #333;
-        }
-
-        #results {
-            margin-top: 10px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #results label {
-            margin-top: 5px;
-        }
-
-        #results input {
-            width: calc(100% - 22px);
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        /* Overlay de carregamento */
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.5em;
-            border-radius: 10px;
-            z-index: 1000;
-            display: none;
-        }
-
-        /* Estilo do logo */
-        #logo {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            width: 80px;
-            opacity: 0.5; /* Logo discreto com transparência */
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Party Wallet</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: white;
+      color: black;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .container {
+      width: 80%;
+      margin: auto;
+    }
+    .button {
+      background-color: black;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .button:hover {
+      background-color: gray;
+    }
+    .balance {
+      font-size: 24px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: white;
+      padding: 20px;
+      width: 60%;
+      max-height: 80%;
+      overflow-y: auto;
+      border-radius: 5px;
+    }
+    .history-card {
+      background-color: #f4f4f4;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-card.sent {
+      border-left: 5px solid green;
+    }
+    .history-card.received {
+      border-left: 5px solid blue;
+    }
+    .icon {
+      margin-right: 10px;
+    }
+  </style>
 </head>
 <body>
-    <div id="container">
-        <video id="camera" autoplay></video>
-        <canvas id="canvas" style="display: none;"></canvas>
-        <div id="controls">
-            <button id="capture-btn">Capturar</button>
-            <button id="share-btn" class="hidden">Compartilhar</button>
-        </div>
-        <div id="results" class="hidden">
-            <h2>Informações Extraídas:</h2>
-            <label>Nome:</label>
-            <input type="text" id="nome" readonly>
-            <label>Endereço:</label>
-            <input type="text" id="endereco" readonly>
-            <label>Email:</label>
-            <input type="text" id="email" readonly>
-            <label>Telefone:</label>
-            <input type="text" id="telefone" readonly>
-        </div>
-        <div id="loading-overlay">Processando...</div>
 
-        <!-- Logo Discreto -->
-        <img id="logo" src="https://logospng.org/wp-content/uploads/sumup-768x432.png" alt="Logo SumUp">
+<div class="container">
+  <h1>QR Party Wallet</h1>
+  <div class="balance">Saldo: R$ <span id="saldo">1000,00</span></div>
+  
+  <button class="button" id="sendBtn">Enviar R$</button>
+  <button class="button" id="receiveBtn">Receber R$</button>
+  <button class="button" id="historyBtn">Ver Histórico</button>
+
+  <div id="qrcode" style="text-align: center; margin-top: 20px;"></div>
+
+  <div class="modal" id="historyModal">
+    <div class="modal-content">
+      <h2>Histórico de Transações</h2>
+      <div id="historyList"></div>
+      <button class="button" id="closeHistory">Fechar</button>
     </div>
+  </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
-    <script>
-        const video = document.getElementById('camera');
-        const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('capture-btn');
-        const nomeField = document.getElementById('nome');
-        const enderecoField = document.getElementById('endereco');
-        const emailField = document.getElementById('email');
-        const telefoneField = document.getElementById('telefone');
-        const results = document.getElementById('results');
-        const shareBtn = document.getElementById('share-btn');
-        const loadingOverlay = document.getElementById('loading-overlay');
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<script>
+  let userId = localStorage.getItem('userId') || Math.random().toString(36).substring(7);
+  let userName = localStorage.getItem('userName') || prompt("Digite seu nome:");
+  localStorage.setItem('userId', userId);
+  localStorage.setItem('userName', userName);
 
-        // Inicializa a câmera traseira
-        navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: { exact: "environment" } }
-        })
-        .then(stream => {
-            video.srcObject = stream;
-        })
-        .catch(error => console.error('Erro ao acessar a câmera traseira', error));
+  let gun = Gun();
+  let saldo = 1000;
 
-        // Captura a imagem do vídeo
-        captureBtn.addEventListener('click', () => {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.style.display = 'block';
-            
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  // Inicializa o saldo
+  gun.get(userId).put({ saldo: saldo, name: userName, transactions: [] });
 
-            // Aplicar pré-processamento
-            preprocessImage(canvas);
+  // Gera o QR Code com ID único do usuário
+  QRCode.toCanvas(document.getElementById('qrcode'), userId, function (error) {
+    if (error) console.error(error);
+    console.log('QR Code gerado');
+  });
 
-            // Exibe o overlay de loading
-            loadingOverlay.style.display = 'flex';
+  document.getElementById('sendBtn').addEventListener('click', function() {
+    let amount = prompt("Quanto deseja enviar (R$)?");
+    amount = parseFloat(amount);
+    if (isNaN(amount) || amount <= 0 || amount > saldo) {
+      alert("Valor inválido.");
+      return;
+    }
 
-            processImage(canvas);
-        });
+    alert("Aguardando escaneamento de QR Code.");
+    // Simulação de escaneamento de QR code
+    let recipientId = prompt("Digite o ID do destinatário escaneado:");
 
-        // Aplica pré-processamento na imagem
-        function preprocessImage(canvas) {
-            const context = canvas.getContext('2d');
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
+    if (!recipientId) {
+      alert("QR Code inválido ou operação cancelada.");
+      return;
+    }
 
-            // Converter para escala de cinza
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                data[i] = data[i + 1] = data[i + 2] = avg;
-            }
-            context.putImageData(imageData, 0, 0);
+    // Solicitar confirmação do destinatário
+    let confirmTransaction = confirm(`Você está prestes a enviar R$ ${amount.toFixed(2)} para ${recipientId}. Deseja confirmar?`);
+    if (!confirmTransaction) {
+      alert("Transação cancelada.");
+      return;
+    }
 
-            // Ajustar contraste e brilho (opcional)
-            // Implementar se necessário
-        }
+    // Transação de envio
+    gun.get(recipientId).get('transactions').set({ type: 'received', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
+    gun.get(userId).get('transactions').set({ type: 'sent', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
 
-        // Processa a imagem usando Tesseract.js
-        function processImage(image) {
-            Tesseract.recognize(image, 'por', {
-                logger: m => console.log(m)
-            }).then(({ data: { text } }) => {
-                extractInformation(text);
-                results.classList.remove('hidden');
-                shareBtn.classList.remove('hidden');
-                loadingOverlay.style.display = 'none';  // Esconde o overlay após o processamento
-            }).catch(error => {
-                console.error('Erro no processamento de imagem', error);
-                results.classList.remove('hidden');
-                shareBtn.classList.remove('hidden');
-                loadingOverlay.style.display = 'none';  // Esconde o overlay em caso de erro
-            });
-        }
+    saldo -= amount;
+    gun.get(userId).put({ saldo: saldo });
 
-        // Extração de informações e permitindo edição manual
-        function extractInformation(text) {
-            const lines = text.split('\n');
-            nomeField.value = lines[0] || '';
-            enderecoField.value = lines[1] || '';
-            emailField.value = lines.find(line => line.includes('@')) || '';
-            telefoneField.value = lines.find(line => line.match(/(?\d{2}?\s)?(\d{4,5}\-\d{4})/)) || '';
-        }
+    alert(`Você enviou R$ ${amount.toFixed(2)} para ${recipientId}.`);
+    document.getElementById('saldo').innerText = saldo.toFixed(2);
+  });
 
-        // Compartilhar informações
-        shareBtn.addEventListener('click', () => {
-            const nome = nomeField.value;
-            const endereco = enderecoField.value;
-            const email = emailField.value;
-            const telefone = telefoneField.value;
+  document.getElementById('receiveBtn').addEventListener('click', function() {
+    alert("Aguardando escaneamento de QR Code.");
+    // Simulação de escaneamento de QR code
+    let senderId = prompt("Digite o ID do remetente escaneado:");
 
-            const textToShare = `
-                Nome: ${nome}
-                Endereço: ${endereco}
-                Email: ${email}
-                Telefone: ${telefone}
-            `;
+    if (!senderId) {
+      alert("QR Code inválido ou operação cancelada.");
+      return;
+    }
 
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Informações do Cartão de Visita',
-                    text: textToShare,
-                    url: window.location.href
-                }).then(() => console.log('Informações compartilhadas com sucesso'))
-                  .catch((error) => console.error('Erro ao compartilhar', error));
-            } else {
-                alert('Compartilhamento não suportado neste navegador.');
-            }
-        });
-    </script>
+    let amount = prompt("Quanto deseja receber (R$)?");
+    amount = parseFloat(amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Valor inválido.");
+      return;
+    }
+
+    // Confirmação de recebimento
+    let confirmReceive = confirm(`Você está prestes a receber R$ ${amount.toFixed(2)} de ${senderId}. Deseja confirmar?`);
+    if (!confirmReceive) {
+      alert("Transação cancelada.");
+      return;
+    }
+
+    // Transação de recebimento
+    gun.get(senderId).get('transactions').set({ type: 'sent', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
+    gun.get(userId).get('transactions').set({ type: 'received', amount: `R$ ${amount.toFixed(2)}`, user: userName, date: new Date().toLocaleString() });
+
+    saldo += amount;
+    gun.get(userId).put({ saldo: saldo });
+
+    alert(`Você recebeu R$ ${amount.toFixed(2)} de ${senderId}.`);
+    document.getElementById('saldo').innerText = saldo.toFixed(2);
+  });
+
+  document.getElementById('historyBtn').addEventListener('click', function() {
+    document.getElementById('historyModal').style.display = 'flex';
+
+    let historyList = document.getElementById('historyList');
+    historyList.innerHTML = '';  // Limpar histórico atual
+
+    gun.get(userId).get('transactions').map().on(function(transaction) {
+      let card = document.createElement('div');
+      card.classList.add('history-card');
+      card.classList.add(transaction.type === 'sent' ? 'sent' : 'received');
+
+      let icon = transaction.type === 'sent' ? '<i class="fa fa-arrow-up icon"></i>' : '<i class="fa fa-arrow-down icon"></i>';
+      card.innerHTML = `${icon} ${transaction.user} enviou ${transaction.amount} em ${transaction.date}`;
+
+      historyList.appendChild(card);
+    });
+  });
+
+  document.getElementById('closeHistory').addEventListener('click', function() {
+    document.getElementById('historyModal').style.display = 'none';
+  });
+</script>
+
 </body>
 </html>

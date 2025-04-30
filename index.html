@@ -1,158 +1,413 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>QR Party Wallet</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Beemote IA - Interface de conversação inteligente">
+  <title>Beemote IA</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: white; color: black; }
-    .button { margin: 10px; padding: 10px 20px; background: black; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    .balance { font-size: 24px; margin: 20px; }
-    .history { margin-top: 20px; text-align: left; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
-    .modal-content { background: white; padding: 20px; border-radius: 8px; }
+    :root {
+      --bg-color: #121212;
+      --primary-color: #FFA500;
+      --primary-hover: #FF8C00;
+      --user-color: #4FC3F7;
+      --bot-color: #81C784;
+      --input-bg: #1f1f1f;
+      --card-bg: #1e1e1e;
+      --text-color: #ffffff;
+      --error-color: #f44336;
+      --loading-color: #bbbbbb;
+      --header-gradient: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .chat-header {
+      padding: 15px 20px;
+      background: var(--header-gradient);
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.2em;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chat-header::before {
+      content: "🐝";
+      margin-right: 10px;
+      font-size: 1.3em;
+    }
+
+    .chat-log {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23121212"/><path d="M30,30 L70,30 L70,70 L30,70 Z" stroke="%231e1e1e" stroke-width="1" fill="none"/></svg>');
+    }
+
+    .message {
+      margin: 15px 0;
+      padding: 12px 16px;
+      border-radius: 8px;
+      max-width: 80%;
+      position: relative;
+      animation: fadeIn 0.3s ease-out;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      background-color: rgba(79, 195, 247, 0.1);
+      border: 1px solid var(--user-color);
+      margin-left: auto;
+      text-align: right;
+      color: var(--user-color);
+    }
+
+    .message.bot {
+      background-color: rgba(129, 199, 132, 0.1);
+      border: 1px solid var(--bot-color);
+      margin-right: auto;
+      text-align: left;
+      color: var(--bot-color);
+    }
+
+    .message.loading {
+      color: var(--loading-color);
+      font-style: italic;
+    }
+
+    .message.error {
+      background-color: rgba(244, 67, 54, 0.1);
+      border: 1px solid var(--error-color);
+      color: var(--error-color);
+    }
+
+    .input-area {
+      display: flex;
+      padding: 15px;
+      background: var(--input-bg);
+      border-top: 1px solid #333;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 1px solid #333;
+      border-radius: 20px;
+      font-size: 1em;
+      background: #2a2a2a;
+      color: var(--text-color);
+      outline: none;
+      transition: border 0.3s;
+    }
+
+    .input-area input:focus {
+      border-color: var(--primary-color);
+    }
+
+    .input-area button {
+      margin-left: 10px;
+      padding: 12px 20px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s, transform 0.1s;
+    }
+
+    .input-area button:hover {
+      background: var(--primary-hover);
+    }
+
+    .input-area button:active {
+      transform: scale(0.98);
+    }
+
+    .input-area button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .status-bar {
+      padding: 8px 15px;
+      background: var(--card-bg);
+      font-size: 0.8em;
+      color: #aaa;
+      text-align: center;
+      border-top: 1px solid #333;
+    }
+
+    .typing-indicator {
+      display: inline-block;
+      margin-left: 5px;
+    }
+
+    .typing-indicator span {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: var(--bot-color);
+      border-radius: 50%;
+      margin: 0 2px;
+      opacity: 0.4;
+      animation: typingAnimation 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typingAnimation {
+      0%, 100% { opacity: 0.4; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-3px); }
+    }
+
+    .model-selector {
+      margin: 10px auto;
+      text-align: center;
+    }
+
+    .model-selector select {
+      padding: 8px 12px;
+      border-radius: 20px;
+      background: #2a2a2a;
+      color: white;
+      border: 1px solid #333;
+    }
+
+    @media (max-width: 600px) {
+      .message {
+        max-width: 90%;
+        padding: 10px 12px;
+      }
+      
+      .input-area {
+        padding: 10px;
+      }
+      
+      .input-area input, .input-area button {
+        padding: 10px 15px;
+      }
+      
+      .chat-header {
+        font-size: 1em;
+        padding: 12px 15px;
+      }
+    }
   </style>
 </head>
 <body>
-
-<h1>QR Party Wallet</h1>
-
-<div class="balance">Saldo: R$ <span id="saldo">0,00</span></div>
-
-<canvas id="qrcode"></canvas>
-
-<div>
-  <button class="button" id="sendBtn">Enviar</button>
-  <button class="button" id="receiveBtn">Receber</button>
-  <button class="button" id="historyBtn">Histórico</button>
-</div>
-
-<!-- Modal para escanear QR Code -->
-<div id="scannerModal" class="modal">
-  <div class="modal-content">
-    <div id="reader" style="width: 300px; margin: auto;"></div>
-    <button class="button" id="closeScanner">Fechar</button>
+  <div class="chat-container">
+    <div class="chat-header">
+      Beemote IA
+    </div>
+    <div class="model-selector">
+      <select id="model-select">
+        <option value="phi-2-q4f16_1">Phi-2 (Leve)</option>
+        <option value="Llama-2-7b-chat-hf-q4f16_1">Llama 2 7B</option>
+        <option value="Mistral-7B-Instruct-v0.1-q4f16_1">Mistral 7B</option>
+      </select>
+    </div>
+    <div id="chat-log" class="chat-log"></div>
+    <div class="status-bar" id="status-bar">
+      Inicializando a Beemote IA...
+    </div>
+    <div class="input-area">
+      <input type="text" id="user-input" placeholder="Digite sua mensagem..." autocomplete="off" disabled />
+      <button id="send-btn" disabled>Enviar</button>
+    </div>
   </div>
-</div>
 
-<!-- Modal para histórico -->
-<div id="historyModal" class="modal">
-  <div class="modal-content">
-    <h2>Histórico</h2>
-    <div id="historyList"></div>
-    <button class="button" id="closeHistory">Fechar</button>
-  </div>
-</div>
+  <script type="module">
+    import { ChatModule } from 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.1.12';
 
-<script>
-  const gun = Gun();
-  let userId = localStorage.getItem('userId') || Math.random().toString(36).substr(2);
-  let userName = localStorage.getItem('userName') || prompt('Seu nome:') || "Anônimo";
+    // Elementos da interface
+    const chatLog = document.getElementById("chat-log");
+    const input = document.getElementById("user-input");
+    const button = document.getElementById("send-btn");
+    const statusBar = document.getElementById("status-bar");
+    const modelSelect = document.getElementById("model-select");
 
-  localStorage.setItem('userId', userId);
-  localStorage.setItem('userName', userName);
+    // Variáveis de estado
+    let chat;
+    let isProcessing = false;
+    let modelLoaded = false;
+    let currentModel = "phi-2-q4f16_1";
 
-  const saldoElem = document.getElementById('saldo');
-  const qrcodeCanvas = document.getElementById('qrcode');
-
-  let saldo = 1000;
-
-  gun.get(userId).get('data').once(data => {
-    if (data) {
-      saldo = data.saldo || 1000;
-      updateSaldo();
-    } else {
-      gun.get(userId).get('data').put({ name: userName, saldo: saldo });
+    // Inicialização do chat
+    async function init() {
+      try {
+        updateStatus("Inicializando a Beemote IA...");
+        
+        chat = new ChatModule();
+        
+        // Configura callbacks de progresso
+        chat.setInitProgressCallback((report) => {
+          updateStatus(`Carregando modelo: ${report.text} (${Math.round(report.progress * 100)}%)`);
+        });
+        
+        await loadModel(currentModel);
+        
+        modelLoaded = true;
+        updateStatus("Beemote IA pronta para conversar");
+        input.disabled = false;
+        button.disabled = false;
+        input.focus();
+        
+        // Mensagem inicial do bot
+        addMessage("Olá! Eu sou a Beemote IA 🐝. Como posso te ajudar hoje?", "bot");
+      } catch (error) {
+        console.error("Erro ao inicializar o chat:", error);
+        addMessage(`Erro ao carregar o modelo: ${error.message}`, "error");
+        updateStatus("Erro ao inicializar a Beemote IA");
+      }
     }
-  });
 
-  function updateSaldo() {
-    saldoElem.innerText = saldo.toFixed(2);
-    QRCode.toCanvas(qrcodeCanvas, userId, function (error) {
-      if (error) console.error(error);
-    });
-  }
-
-  updateSaldo();
-
-  document.getElementById('sendBtn').onclick = () => {
-    openScanner('send');
-  };
-
-  document.getElementById('receiveBtn').onclick = () => {
-    openScanner('receive');
-  };
-
-  let scanner;
-  function openScanner(mode) {
-    document.getElementById('scannerModal').style.display = 'flex';
-    scanner = new Html5Qrcode("reader");
-    scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-      scanner.stop();
-      document.getElementById('scannerModal').style.display = 'none';
-      if (mode === 'send') sendMoney(decodedText);
-      else receiveMoney(decodedText);
-    });
-  }
-
-  function sendMoney(recipientId) {
-    let amount = parseFloat(prompt('Valor para enviar (R$):'));
-    if (isNaN(amount) || amount <= 0 || amount > saldo) {
-      alert('Valor inválido.');
-      return;
+    // Carrega um modelo específico
+    async function loadModel(model) {
+      updateStatus(`Carregando modelo: ${model}...`);
+      currentModel = model;
+      await chat.reload(model);
     }
-    saldo -= amount;
-    updateSaldo();
-    gun.get(userId).get('history').set({ type: 'sent', to: recipientId, amount, date: new Date().toLocaleString() });
-    gun.get(recipientId).get('history').set({ type: 'received', from: userId, amount, date: new Date().toLocaleString() });
-    gun.get(userId).get('data').put({ saldo });
-    alert(`Enviado R$ ${amount.toFixed(2)} para ${recipientId}!`);
-  }
 
-  function receiveMoney(senderId) {
-    let amount = parseFloat(prompt('Valor para receber (R$):'));
-    if (isNaN(amount) || amount <= 0) {
-      alert('Valor inválido.');
-      return;
+    // Adiciona mensagem ao chat
+    function addMessage(text, sender) {
+      const div = document.createElement("div");
+      div.className = `message ${sender}`;
+      
+      if (sender === "loading") {
+        div.innerHTML = `${text} <span class="typing-indicator"><span></span><span></span><span></span></span>`;
+      } else {
+        // Processa quebras de linha e formatação básica
+        const processedText = text.replace(/\n/g, '<br>');
+        div.innerHTML = processedText;
+      }
+      
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
     }
-    saldo += amount;
-    updateSaldo();
-    gun.get(userId).get('history').set({ type: 'received', from: senderId, amount, date: new Date().toLocaleString() });
-    gun.get(senderId).get('history').set({ type: 'sent', to: userId, amount, date: new Date().toLocaleString() });
-    gun.get(userId).get('data').put({ saldo });
-    alert(`Recebido R$ ${amount.toFixed(2)} de ${senderId}!`);
-  }
 
-  document.getElementById('closeScanner').onclick = () => {
-    if (scanner) scanner.stop();
-    document.getElementById('scannerModal').style.display = 'none';
-  };
+    // Atualiza a barra de status
+    function updateStatus(text) {
+      statusBar.textContent = text;
+    }
 
-  document.getElementById('historyBtn').onclick = () => {
-    document.getElementById('historyModal').style.display = 'flex';
-    const historyList = document.getElementById('historyList');
-    historyList.innerHTML = '';
+    // Envia mensagem
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text || isProcessing || !modelLoaded) return;
+      
+      // Adiciona mensagem do usuário
+      addMessage(text, "user");
+      input.value = "";
+      
+      // Mostra indicador de carregamento
+      const loadingId = Date.now();
+      addMessage("Pensando...", "loading");
+      
+      isProcessing = true;
+      button.disabled = true;
+      input.disabled = true;
+      
+      try {
+        // Obtém resposta do modelo
+        const reply = await chat.generate(text, () => {}, 0.7, 1024);
+        
+        // Remove indicador de carregamento
+        const loadingElements = document.querySelectorAll('.message.loading');
+        loadingElements.forEach(el => el.remove());
+        
+        // Adiciona resposta
+        addMessage(reply, "bot");
+      } catch (error) {
+        console.error("Erro ao gerar resposta:", error);
+        
+        // Remove indicador de carregamento
+        const loadingElements = document.querySelectorAll('.message.loading');
+        loadingElements.forEach(el => el.remove());
+        
+        addMessage(`Desculpe, ocorreu um erro: ${error.message}`, "error");
+      } finally {
+        isProcessing = false;
+        button.disabled = false;
+        input.disabled = false;
+        input.focus();
+      }
+    }
 
-    gun.get(userId).get('history').map().once(item => {
-      if (item) {
-        let entry = document.createElement('div');
-        if (item.type === 'sent') {
-          entry.innerText = `Enviado R$ ${item.amount.toFixed(2)} para ${item.to} em ${item.date}`;
-        } else {
-          entry.innerText = `Recebido R$ ${item.amount.toFixed(2)} de ${item.from} em ${item.date}`;
-        }
-        historyList.appendChild(entry);
+    // Event listeners
+    button.addEventListener("click", sendMessage);
+    
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        sendMessage();
       }
     });
-  };
 
-  document.getElementById('closeHistory').onclick = () => {
-    document.getElementById('historyModal').style.display = 'none';
-  };
-</script>
+    modelSelect.addEventListener("change", async (e) => {
+      if (!modelLoaded) return;
+      
+      const newModel = e.target.value;
+      if (newModel !== currentModel) {
+        try {
+          isProcessing = true;
+          button.disabled = true;
+          input.disabled = true;
+          
+          await loadModel(newModel);
+          addMessage(`Modelo alterado para: ${modelSelect.options[modelSelect.selectedIndex].text}`, "bot");
+        } catch (error) {
+          console.error("Erro ao trocar de modelo:", error);
+          addMessage(`Erro ao trocar de modelo: ${error.message}`, "error");
+          // Reverte para o modelo anterior
+          modelSelect.value = currentModel;
+        } finally {
+          isProcessing = false;
+          button.disabled = false;
+          input.disabled = false;
+          input.focus();
+        }
+      }
+    });
 
+    // Inicializa o chat quando a página carrega
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
 </body>
 </html>

@@ -2,8 +2,10 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="description" content="Beemote IA - Interface de conversação inteligente">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="Beemote IA - Chat inteligente otimizado para mobile">
   <title>Beemote IA</title>
   <style>
     :root {
@@ -22,14 +24,16 @@
 
     * {
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
       margin: 0;
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
       line-height: 1.6;
+      touch-action: manipulation;
     }
 
     .chat-container {
@@ -42,42 +46,44 @@
     }
 
     .chat-header {
-      padding: 15px 20px;
+      padding: 12px 20px;
       background: var(--header-gradient);
       color: white;
       text-align: center;
       font-weight: bold;
-      font-size: 1.2em;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      font-size: 1.1em;
       display: flex;
       align-items: center;
       justify-content: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .chat-header::before {
       content: "🐝";
-      margin-right: 10px;
-      font-size: 1.3em;
+      margin-right: 8px;
+      font-size: 1.2em;
     }
 
     .chat-log {
       flex: 1;
-      padding: 20px;
+      padding: 15px;
       overflow-y: auto;
       scroll-behavior: smooth;
-      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23121212"/><path d="M30,30 L70,30 L70,70 L30,70 Z" stroke="%231e1e1e" stroke-width="1" fill="none"/></svg>');
+      -webkit-overflow-scrolling: touch;
     }
 
     .message {
-      margin: 15px 0;
-      padding: 12px 16px;
+      margin: 12px 0;
+      padding: 10px 14px;
       border-radius: 8px;
-      max-width: 80%;
+      max-width: 85%;
       position: relative;
       animation: fadeIn 0.3s ease-out;
       word-wrap: break-word;
       white-space: pre-wrap;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      font-size: 0.95em;
     }
 
     @keyframes fadeIn {
@@ -89,7 +95,6 @@
       background-color: rgba(79, 195, 247, 0.1);
       border: 1px solid var(--user-color);
       margin-left: auto;
-      text-align: right;
       color: var(--user-color);
     }
 
@@ -97,7 +102,6 @@
       background-color: rgba(129, 199, 132, 0.1);
       border: 1px solid var(--bot-color);
       margin-right: auto;
-      text-align: left;
       color: var(--bot-color);
     }
 
@@ -114,9 +118,11 @@
 
     .input-area {
       display: flex;
-      padding: 15px;
+      padding: 12px;
       background: var(--input-bg);
       border-top: 1px solid #333;
+      position: sticky;
+      bottom: 0;
     }
 
     .input-area input {
@@ -124,83 +130,72 @@
       padding: 12px 15px;
       border: 1px solid #333;
       border-radius: 20px;
-      font-size: 1em;
+      font-size: 16px; /* Evita zoom no iOS */
       background: #2a2a2a;
       color: var(--text-color);
       outline: none;
-      transition: border 0.3s;
-    }
-
-    .input-area input:focus {
-      border-color: var(--primary-color);
+      -webkit-appearance: none;
     }
 
     .input-area button {
-      margin-left: 10px;
-      padding: 12px 20px;
+      margin-left: 8px;
+      padding: 12px 18px;
       background: var(--primary-color);
       color: white;
       border: none;
       border-radius: 20px;
-      cursor: pointer;
       font-weight: bold;
-      transition: background 0.3s, transform 0.1s;
-    }
-
-    .input-area button:hover {
-      background: var(--primary-hover);
-    }
-
-    .input-area button:active {
-      transform: scale(0.98);
-    }
-
-    .input-area button:disabled {
-      background: #555;
-      cursor: not-allowed;
+      font-size: 0.95em;
+      min-width: 80px;
     }
 
     .status-bar {
-      padding: 8px 15px;
+      padding: 8px 12px;
       background: var(--card-bg);
-      font-size: 0.8em;
+      font-size: 0.75em;
       color: #aaa;
       text-align: center;
-      border-top: 1px solid #333;
-    }
-
-    .typing-indicator {
-      display: inline-block;
-      margin-left: 5px;
     }
 
     .typing-indicator span {
       display: inline-block;
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       background-color: var(--bot-color);
       border-radius: 50%;
       margin: 0 2px;
-      opacity: 0.4;
       animation: typingAnimation 1.4s infinite ease-in-out;
     }
 
-    .typing-indicator span:nth-child(2) {
-      animation-delay: 0.2s;
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
     }
 
-    .typing-indicator span:nth-child(3) {
-      animation-delay: 0.4s;
+    #progress-bar {
+      width: 80%;
+      max-width: 250px;
+      height: 6px;
+      background: #333;
+      margin: 15px 0;
+      border-radius: 3px;
+      overflow: hidden;
     }
 
-    @keyframes typingAnimation {
-      0%, 100% { opacity: 0.4; transform: translateY(0); }
-      50% { opacity: 1; transform: translateY(-3px); }
-    }
-
-    .model-selector {
-      margin: 10px auto;
-      text-align: center;
+    #progress {
+      height: 100%;
+      background: var(--primary-color);
+      width: 0%;
+      transition: width 0.3s;
     }
 
     .model-selector select {
@@ -209,55 +204,59 @@
       background: #2a2a2a;
       color: white;
       border: 1px solid #333;
+      font-size: 16px; /* Evita zoom no iOS */
+      margin: 5px 0;
     }
 
     .retry-button {
-      margin-left: 10px;
-      padding: 8px 15px;
+      padding: 8px 16px;
       background: var(--error-color);
       color: white;
       border: none;
       border-radius: 20px;
-      cursor: pointer;
-      font-size: 0.8em;
+      margin-top: 10px;
     }
 
-    @media (max-width: 600px) {
-      .message {
-        max-width: 90%;
-        padding: 10px 12px;
-      }
-      
-      .input-area {
-        padding: 10px;
-      }
-      
-      .input-area input, .input-area button {
-        padding: 10px 15px;
-      }
-      
+    #lite-version-btn {
+      background: #4CAF50;
+      margin-top: 15px;
+    }
+
+    @media (min-width: 600px) {
       .chat-header {
+        font-size: 1.2em;
+        padding: 15px 20px;
+      }
+      .message {
+        max-width: 75%;
+        padding: 12px 16px;
         font-size: 1em;
-        padding: 12px 15px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="chat-container">
+  <div id="loading-screen">
+    <div style="color:#FFA500; font-size:1.3em; margin-bottom:10px;">🐝 Beemote IA</div>
+    <div id="loading-text">Inicializando inteligência artificial...</div>
+    <div id="progress-bar"><div id="progress"></div></div>
+    <div id="time-estimate" style="color:#aaa; font-size:0.8em;"></div>
+    <button id="lite-version-btn" class="retry-button" style="display:none;">Usar Versão Lite</button>
+  </div>
+
+  <div class="chat-container" style="display:none;">
     <div class="chat-header">
       Beemote IA
     </div>
     <div class="model-selector">
       <select id="model-select">
-        <option value="phi-2-q4f16_1">Phi-2 (Leve)</option>
-        <option value="Llama-2-7b-chat-hf-q4f16_1">Llama 2 7B</option>
-        <option value="Mistral-7B-Instruct-v0.1-q4f16_1">Mistral 7B</option>
+        <option value="TinyLlama-1.1B-Chat-v0.3-q4f16_1">TinyLlama (Rápido)</option>
+        <option value="phi-2-q4f16_1">Phi-2 (Padrão)</option>
       </select>
     </div>
     <div id="chat-log" class="chat-log"></div>
     <div class="status-bar" id="status-bar">
-      Inicializando a Beemote IA...
+      Preparando a Beemote IA...
     </div>
     <div class="input-area">
       <input type="text" id="user-input" placeholder="Digite sua mensagem..." autocomplete="off" disabled />
@@ -274,102 +273,120 @@
     const button = document.getElementById("send-btn");
     const statusBar = document.getElementById("status-bar");
     const modelSelect = document.getElementById("model-select");
+    const loadingScreen = document.getElementById("loading-screen");
+    const loadingText = document.getElementById("loading-text");
+    const progressBar = document.getElementById("progress");
+    const timeEstimate = document.getElementById("time-estimate");
+    const liteVersionBtn = document.getElementById("lite-version-btn");
 
     // Variáveis de estado
     let chat;
-    let isProcessing = false;
     let modelLoaded = false;
-    let currentModel = "phi-2-q4f16_1";
-    let initializationAttempts = 0;
-    const MAX_INIT_ATTEMPTS = 3;
+    let currentModel = "TinyLlama-1.1B-Chat-v0.3-q4f16_1";
+    let initStartTime;
+    let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Mostra mensagem de erro com botão de tentar novamente
-    function showErrorWithRetry(message) {
-      const errorDiv = document.createElement("div");
-      errorDiv.className = "message error";
-      errorDiv.innerHTML = `
-        ${message}
-        <button class="retry-button" id="retry-init">Tentar Novamente</button>
-      `;
-      chatLog.appendChild(errorDiv);
-      
-      document.getElementById("retry-init").addEventListener("click", init);
+    // Configurações para mobile
+    if (isMobile) {
+      modelSelect.value = currentModel;
+      liteVersionBtn.style.display = "block";
     }
 
-    // Inicialização do chat
-    async function init() {
+    // Mostra tela de timeout
+    let timeoutHandle = setTimeout(() => {
+      if (!modelLoaded) {
+        loadingText.innerHTML = "Está demorando mais que o normal...<br>Recomendamos usar a Versão Lite em dispositivos móveis";
+        liteVersionBtn.style.display = "block";
+      }
+    }, 30000);
+
+    // Versão Lite - Fallback
+    liteVersionBtn.addEventListener("click", () => {
+      loadingText.textContent = "Carregando versão simplificada...";
+      startLiteVersion();
+    });
+
+    async function startLiteVersion() {
       try {
-        initializationAttempts++;
-        updateStatus("Inicializando a Beemote IA...");
+        // Esconde elementos do WebLLM
+        modelSelect.style.display = "none";
         
-        // Remove mensagens de erro anteriores
-        document.querySelectorAll('.message.error').forEach(el => el.remove());
+        // Mostra chat UI
+        document.querySelector(".chat-container").style.display = "flex";
+        loadingScreen.style.display = "none";
         
-        // Cria nova instância do ChatModule
+        // Habilita interface
+        input.disabled = false;
+        button.disabled = false;
+        modelLoaded = true;
+        
+        // Mensagem inicial
+        addMessage("Você está usando a versão Lite da Beemote IA. Algumas funcionalidades podem ser limitadas.", "bot");
+        updateStatus("Pronto - Modo Lite");
+      } catch (error) {
+        console.error("Erro na versão Lite:", error);
+        loadingText.textContent = "Erro ao carregar a versão Lite. Por favor, recarregue a página.";
+      }
+    }
+
+    // Inicialização do WebLLM
+    async function initWebLLM() {
+      try {
+        initStartTime = Date.now();
         chat = new ChatModule();
         
-        // Configura callbacks de progresso
         chat.setInitProgressCallback((report) => {
-          updateStatus(`Carregando modelo: ${report.text} (${Math.round(report.progress * 100)}%)`);
-        });
-        
-        // Configura timeout para evitar travamento
-        const initTimeout = setTimeout(() => {
-          if (!modelLoaded) {
-            throw new Error("Tempo excedido ao carregar o modelo");
+          const percent = Math.round(report.progress * 100);
+          progressBar.style.width = `${percent}%`;
+          
+          // Estimativa de tempo
+          const elapsed = (Date.now() - initStartTime) / 1000;
+          const remaining = Math.round((elapsed / percent) * (100 - percent));
+          
+          loadingText.textContent = report.text || "Carregando modelo...";
+          timeEstimate.textContent = `Tempo estimado: ${remaining}s`;
+          
+          // Atualiza status para o usuário
+          if (percent < 30) {
+            updateStatus("Baixando modelo...");
+          } else if (percent < 80) {
+            updateStatus("Compilando...");
+          } else {
+            updateStatus("Finalizando...");
           }
-        }, 120000); // 2 minutos de timeout
+        });
+
+        // Configurações otimizadas para mobile
+        if (isMobile) {
+          await chat.setInitConfig({
+            wasmUrl: `https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.1.12/dist/${currentModel}-webgpu.wasm`
+          });
+        }
+
+        await chat.reload(currentModel);
         
-        await loadModel(currentModel);
-        clearTimeout(initTimeout);
-        
+        // Sucesso - mostra interface
+        clearTimeout(timeoutHandle);
         modelLoaded = true;
-        initializationAttempts = 0;
-        updateStatus("Beemote IA pronta para conversar");
+        document.querySelector(".chat-container").style.display = "flex";
+        loadingScreen.style.display = "none";
         input.disabled = false;
         button.disabled = false;
         input.focus();
         
-        // Mensagem inicial do bot
+        // Mensagem inicial
         addMessage("Olá! Eu sou a Beemote IA 🐝. Como posso te ajudar hoje?", "bot");
-      } catch (error) {
-        console.error("Erro ao inicializar o chat:", error);
+        updateStatus("Pronto para conversar");
         
-        if (initializationAttempts < MAX_INIT_ATTEMPTS) {
-          showErrorWithRetry(`
-            Falha na inicialização (tentativa ${initializationAttempts}/${MAX_INIT_ATTEMPTS}): 
-            ${error.message || "Erro desconhecido"}
-          `);
-        } else {
-          addMessage(`
-            Não foi possível inicializar a Beemote IA após ${MAX_INIT_ATTEMPTS} tentativas. 
-            Por favor, recarregue a página ou tente novamente mais tarde.
-          `, "error");
-          updateStatus("Falha na inicialização");
-        }
+      } catch (error) {
+        console.error("Erro na inicialização:", error);
+        loadingText.innerHTML = `Erro ao carregar: ${error.message}<br>Tente a Versão Lite ou recarregue a página.`;
+        liteVersionBtn.style.display = "block";
+        updateStatus("Erro na inicialização");
       }
     }
 
-    // Carrega um modelo específico
-    async function loadModel(model) {
-      try {
-        updateStatus(`Carregando modelo: ${model}...`);
-        currentModel = model;
-        
-        // Limpa o cache se estiver trocando de modelo
-        if (modelLoaded) {
-          await chat.unload();
-        }
-        
-        await chat.reload(model);
-        return true;
-      } catch (error) {
-        console.error(`Erro ao carregar modelo ${model}:`, error);
-        throw error;
-      }
-    }
-
-    // Adiciona mensagem ao chat
+    // Funções auxiliares
     function addMessage(text, sender) {
       const div = document.createElement("div");
       div.className = `message ${sender}`;
@@ -377,100 +394,71 @@
       if (sender === "loading") {
         div.innerHTML = `${text} <span class="typing-indicator"><span></span><span></span><span></span></span>`;
       } else {
-        // Processa quebras de linha e formatação básica
-        const processedText = text.replace(/\n/g, '<br>');
-        div.innerHTML = processedText;
+        div.textContent = text;
       }
       
       chatLog.appendChild(div);
       chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    // Atualiza a barra de status
     function updateStatus(text) {
       statusBar.textContent = text;
     }
 
-    // Envia mensagem
     async function sendMessage() {
       const text = input.value.trim();
-      if (!text || isProcessing || !modelLoaded) return;
+      if (!text || !modelLoaded) return;
       
-      // Adiciona mensagem do usuário
       addMessage(text, "user");
       input.value = "";
       
-      // Mostra indicador de carregamento
       const loadingId = Date.now();
       addMessage("Pensando...", "loading");
       
-      isProcessing = true;
-      button.disabled = true;
       input.disabled = true;
+      button.disabled = true;
       
       try {
-        // Obtém resposta do modelo
-        const reply = await chat.generate(text, () => {}, 0.7, 1024);
+        let reply;
+        if (chat && modelLoaded) {
+          // Modo completo com WebLLM
+          reply = await chat.generate(text, () => {}, 0.7, isMobile ? 256 : 512);
+        } else {
+          // Modo Lite fallback
+          reply = "Esta é uma resposta simulada (Modo Lite). Recarregue a página para tentar o modo completo novamente.";
+        }
         
-        // Remove indicador de carregamento
-        const loadingElements = document.querySelectorAll('.message.loading');
-        loadingElements.forEach(el => el.remove());
-        
-        // Adiciona resposta
+        document.querySelectorAll('.message.loading').forEach(el => el.remove());
         addMessage(reply, "bot");
       } catch (error) {
         console.error("Erro ao gerar resposta:", error);
-        
-        // Remove indicador de carregamento
-        const loadingElements = document.querySelectorAll('.message.loading');
-        loadingElements.forEach(el => el.remove());
-        
-        addMessage(`Desculpe, ocorreu um erro: ${error.message}`, "error");
+        document.querySelectorAll('.message.loading').forEach(el => el.remove());
+        addMessage(`Erro: ${error.message}`, "error");
       } finally {
-        isProcessing = false;
-        button.disabled = false;
         input.disabled = false;
+        button.disabled = false;
         input.focus();
       }
     }
 
     // Event listeners
     button.addEventListener("click", sendMessage);
+    input.addEventListener("keypress", (e) => e.key === "Enter" && sendMessage());
     
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        sendMessage();
-      }
-    });
-
     modelSelect.addEventListener("change", async (e) => {
       if (!modelLoaded) return;
-      
-      const newModel = e.target.value;
-      if (newModel !== currentModel) {
-        try {
-          isProcessing = true;
-          button.disabled = true;
-          input.disabled = true;
-          
-          await loadModel(newModel);
-          addMessage(`Modelo alterado para: ${modelSelect.options[modelSelect.selectedIndex].text}`, "bot");
-        } catch (error) {
-          console.error("Erro ao trocar de modelo:", error);
-          addMessage(`Erro ao trocar de modelo: ${error.message}`, "error");
-          // Reverte para o modelo anterior
-          modelSelect.value = currentModel;
-        } finally {
-          isProcessing = false;
-          button.disabled = false;
-          input.disabled = false;
-          input.focus();
-        }
-      }
+      currentModel = e.target.value;
+      updateStatus(`Carregando ${currentModel}...`);
+      await initWebLLM();
     });
 
-    // Inicializa o chat quando a página carrega
-    window.addEventListener('DOMContentLoaded', init);
+    // Inicia automaticamente em desktop, mostra opções em mobile
+    if (!isMobile) {
+      initWebLLM();
+    } else {
+      loadingText.textContent = "Dispositivo móvel detectado. Carregando versão otimizada...";
+      setTimeout(initWebLLM, 500);
+    }
   </script>
 </body>
 </html>

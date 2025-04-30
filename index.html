@@ -211,6 +211,17 @@
       border: 1px solid #333;
     }
 
+    .retry-button {
+      margin-left: 10px;
+      padding: 8px 15px;
+      background: var(--error-color);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.8em;
+    }
+
     @media (max-width: 600px) {
       .message {
         max-width: 90%;
@@ -269,12 +280,32 @@
     let isProcessing = false;
     let modelLoaded = false;
     let currentModel = "phi-2-q4f16_1";
+    let initializationAttempts = 0;
+    const MAX_INIT_ATTEMPTS = 3;
+
+    // Mostra mensagem de erro com botão de tentar novamente
+    function showErrorWithRetry(message) {
+      const errorDiv = document.createElement("div");
+      errorDiv.className = "message error";
+      errorDiv.innerHTML = `
+        ${message}
+        <button class="retry-button" id="retry-init">Tentar Novamente</button>
+      `;
+      chatLog.appendChild(errorDiv);
+      
+      document.getElementById("retry-init").addEventListener("click", init);
+    }
 
     // Inicialização do chat
     async function init() {
       try {
+        initializationAttempts++;
         updateStatus("Inicializando a Beemote IA...");
         
+        // Remove mensagens de erro anteriores
+        document.querySelectorAll('.message.error').forEach(el => el.remove());
+        
+        // Cria nova instância do ChatModule
         chat = new ChatModule();
         
         // Configura callbacks de progresso
@@ -282,9 +313,18 @@
           updateStatus(`Carregando modelo: ${report.text} (${Math.round(report.progress * 100)}%)`);
         });
         
+        // Configura timeout para evitar travamento
+        const initTimeout = setTimeout(() => {
+          if (!modelLoaded) {
+            throw new Error("Tempo excedido ao carregar o modelo");
+          }
+        }, 120000); // 2 minutos de timeout
+        
         await loadModel(currentModel);
+        clearTimeout(initTimeout);
         
         modelLoaded = true;
+        initializationAttempts = 0;
         updateStatus("Beemote IA pronta para conversar");
         input.disabled = false;
         button.disabled = false;
@@ -294,16 +334,39 @@
         addMessage("Olá! Eu sou a Beemote IA 🐝. Como posso te ajudar hoje?", "bot");
       } catch (error) {
         console.error("Erro ao inicializar o chat:", error);
-        addMessage(`Erro ao carregar o modelo: ${error.message}`, "error");
-        updateStatus("Erro ao inicializar a Beemote IA");
+        
+        if (initializationAttempts < MAX_INIT_ATTEMPTS) {
+          showErrorWithRetry(`
+            Falha na inicialização (tentativa ${initializationAttempts}/${MAX_INIT_ATTEMPTS}): 
+            ${error.message || "Erro desconhecido"}
+          `);
+        } else {
+          addMessage(`
+            Não foi possível inicializar a Beemote IA após ${MAX_INIT_ATTEMPTS} tentativas. 
+            Por favor, recarregue a página ou tente novamente mais tarde.
+          `, "error");
+          updateStatus("Falha na inicialização");
+        }
       }
     }
 
     // Carrega um modelo específico
     async function loadModel(model) {
-      updateStatus(`Carregando modelo: ${model}...`);
-      currentModel = model;
-      await chat.reload(model);
+      try {
+        updateStatus(`Carregando modelo: ${model}...`);
+        currentModel = model;
+        
+        // Limpa o cache se estiver trocando de modelo
+        if (modelLoaded) {
+          await chat.unload();
+        }
+        
+        await chat.reload(model);
+        return true;
+      } catch (error) {
+        console.error(`Erro ao carregar modelo ${model}:`, error);
+        throw error;
+      }
     }
 
     // Adiciona mensagem ao chat

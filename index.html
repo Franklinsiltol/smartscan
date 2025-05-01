@@ -1,216 +1,190 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Beemote IA - LLM no GitHub Pages</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beemote IA</title>
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.10.0';
+
+    let generator;
+    const status = document.getElementById("status");
+    const loaderBar = document.getElementById("loader-bar");
+
+    async function init() {
+      let width = 0;
+      const loader = setInterval(() => {
+        width = Math.min(width + 1, 95);
+        loaderBar.style.width = width + '%';
+      }, 100);
+
+      status.textContent = "Carregando modelo Beemote IA...";
+      generator = await pipeline('text-generation', 'Xenova/distilgpt2');
+      clearInterval(loader);
+      loaderBar.style.width = '100%';
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("chat").style.display = "flex";
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      init();
+
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const userText = input.value.trim();
+        if (!userText) return;
+        input.value = "";
+        messages.innerHTML += `<div class="bubble user">${userText}</div>`;
+        messages.innerHTML += `<div class="bubble loading">...</div>`;
+        messages.scrollTop = messages.scrollHeight;
+
+        const output = await generator(userText, { max_new_tokens: 60 });
+        document.querySelector(".bubble.loading").remove();
+        messages.innerHTML += `<div class="bubble bot">${output[0].generated_text}</div>`;
+        messages.scrollTop = messages.scrollHeight;
+      });
+    });
+  </script>
   <style>
-    :root {
-      --primary: #FFA500;
-      --bg: #121212;
-      --text: #ffffff;
-    }
-    body {
-      font-family: Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+    * {
+      box-sizing: border-box;
       margin: 0;
-      padding: 20px;
-      line-height: 1.6;
+      font-family: 'Segoe UI', sans-serif;
     }
-    #chat-container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    #messages {
-      height: 60vh;
-      overflow-y: auto;
-      padding: 10px;
-      margin-bottom: 20px;
-      border: 1px solid #333;
-      border-radius: 8px;
-    }
-    .message {
-      margin: 10px 0;
-      padding: 10px 15px;
-      border-radius: 8px;
-      max-width: 80%;
-    }
-    .user {
-      background: rgba(79, 195, 247, 0.2);
-      margin-left: auto;
-    }
-    .bot {
-      background: rgba(129, 199, 132, 0.2);
-      margin-right: auto;
-    }
-    #input-area {
+
+    body {
+      height: 100vh;
       display: flex;
-      gap: 10px;
+      flex-direction: column;
+      background: linear-gradient(to right, #f0f4f8, #e8eff5);
+      color: #333;
     }
-    #user-input {
+
+    #loader {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    #loader-bar-container {
+      width: 80%;
+      height: 10px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    #loader-bar {
+      height: 100%;
+      background: #1d9bf0;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    #chat {
       flex: 1;
-      padding: 12px 15px;
-      border-radius: 20px;
-      border: 1px solid #333;
-      background: #2a2a2a;
-      color: var(--text);
-      font-size: 16px;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
     }
-    #send-btn {
-      padding: 0 24px;
-      background: var(--primary);
+
+    #messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      margin: 10px 0;
+      border-radius: 15px;
+      max-width: 80%;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .user {
+      background: #1d9bf0;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .bot {
+      background: #e1e9f1;
+      color: #333;
+      align-self: flex-start;
+    }
+
+    .loading {
+      background: #ccc;
+      color: white;
+      font-style: italic;
+      align-self: flex-start;
+    }
+
+    #form {
+      display: flex;
+      border-top: 1px solid #ccc;
+      padding: 10px;
+      background: white;
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+
+    button {
+      background: #1d9bf0;
       color: white;
       border: none;
-      border-radius: 20px;
+      padding: 10px 16px;
+      margin-left: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      font-weight: bold;
     }
-    #loading {
-      display: none;
-      text-align: center;
-      margin: 20px 0;
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    .spinner {
-      border: 4px solid rgba(0, 0, 0, 0.1);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border-left-color: var(--primary);
-      animation: spin 1s linear infinite;
-      margin: 0 auto 10px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    #status {
-      text-align: center;
-      color: #aaa;
-      margin: 20px 0;
+
+    @media (max-width: 600px) {
+      .bubble {
+        max-width: 100%;
+        font-size: 0.95em;
+      }
+
+      button {
+        padding: 8px 12px;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="chat-container">
-    <h1 style="text-align: center; color: var(--primary)">🐝 Beemote IA (TinyLlama)</h1>
-    <div id="status">Carregando modelo de IA (pode demorar alguns minutos)...</div>
-    <div id="loading">
-      <div class="spinner"></div>
-      <div>Processando sua mensagem...</div>
-    </div>
-    <div id="messages"></div>
-    <div id="input-area">
-      <input type="text" id="user-input" placeholder="Digite sua mensagem..." disabled>
-      <button id="send-btn" disabled>Enviar</button>
+  <div id="loader">
+    <h1 style="color:#1d9bf0;">Beemote IA</h1>
+    <p id="status">Iniciando...</p>
+    <div id="loader-bar-container">
+      <div id="loader-bar"></div>
     </div>
   </div>
 
-  <!-- Importamos a biblioteca transformers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0"></script>
-
-  <script>
-    // Elementos da UI
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
-    const loadingEl = document.getElementById('loading');
-    const statusEl = document.getElementById('status');
-
-    // Variáveis globais
-    let pipeline;
-    let modelLoaded = false;
-
-    // Função para adicionar mensagens ao chat
-    function addMessage(text, sender) {
-      const messageEl = document.createElement('div');
-      messageEl.className = `message ${sender}`;
-      messageEl.textContent = text;
-      messagesEl.appendChild(messageEl);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    // Função para mostrar/ocultar o loading
-    function toggleLoading(show) {
-      loadingEl.style.display = show ? 'block' : 'none';
-      inputEl.disabled = show;
-      sendBtn.disabled = show;
-    }
-
-    // Carrega o modelo TinyLlama
-    async function loadModel() {
-      try {
-        statusEl.textContent = "Baixando modelo TinyLlama (≈20MB)...";
-        
-        // Carrega o modelo quantizado (versão reduzida)
-        pipeline = await transformers.pipeline(
-          'text-generation',
-          'Xenova/tinyllama-1.1b-chat-v1.0',
-          {
-            quantized: true,
-            progress_callback: (progress) => {
-              statusEl.textContent = `Carregando modelo... ${Math.round(progress * 100)}%`;
-            }
-          }
-        );
-        
-        modelLoaded = true;
-        statusEl.textContent = "Modelo carregado com sucesso!";
-        inputEl.placeholder = "Digite sua mensagem...";
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
-        
-        addMessage("Olá! Eu sou a Beemote IA rodando diretamente no seu navegador. Como posso ajudar?", "bot");
-        
-      } catch (error) {
-        statusEl.textContent = "Erro ao carregar o modelo: " + error.message;
-        addMessage("Desculpe, houve um erro ao carregar o modelo de IA.", "error");
-      }
-    }
-
-    // Gera resposta do modelo
-    async function generateResponse(prompt) {
-      if (!modelLoaded) return "Modelo não carregado ainda...";
-      
-      try {
-        toggleLoading(true);
-        
-        const response = await pipeline(prompt, {
-          max_new_tokens: 100,
-          temperature: 0.7,
-          do_sample: true
-        });
-        
-        return response[0].generated_text;
-      } catch (error) {
-        console.error("Erro na geração:", error);
-        return "Desculpe, ocorreu um erro ao processar sua mensagem.";
-      } finally {
-        toggleLoading(false);
-      }
-    }
-
-    // Envia mensagem
-    async function sendMessage() {
-      const text = inputEl.value.trim();
-      if (!text || !modelLoaded) return;
-      
-      addMessage(text, "user");
-      inputEl.value = "";
-      
-      const response = await generateResponse(text);
-      addMessage(response, "bot");
-    }
-
-    // Event listeners
-    sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
-
-    // Inicia o aplicativo
-    loadModel();
-  </script>
+  <div id="chat">
+    <div id="messages"></div>
+    <form id="form">
+      <input type="text" id="input" placeholder="Digite sua pergunta..." autocomplete="off" />
+      <button type="submit">Enviar</button>
+    </form>
+  </div>
 </body>
 </html>

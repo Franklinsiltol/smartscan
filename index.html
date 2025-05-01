@@ -97,6 +97,17 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    .model-selector {
+      margin: 15px 0;
+      text-align: center;
+    }
+    .model-selector select {
+      padding: 8px 12px;
+      border-radius: 20px;
+      background: #2a2a2a;
+      color: white;
+      border: 1px solid #333;
+    }
   </style>
 </head>
 <body>
@@ -104,6 +115,12 @@
     <div id="loading">
       <h1>🐝 Beemote IA</h1>
       <p id="status">Inicializando sistema...</p>
+      <div class="model-selector">
+        <select id="model-select">
+          <option value="TinyLlama-1.1B-Chat-v0.3-q4f16_1">TinyLlama (Rápido)</option>
+          <option value="phi-2-q4f16_1">Phi-2 (Padrão)</option>
+        </select>
+      </div>
       <div class="status" id="progress-text">Conectando...</div>
       <div class="spinner" id="spinner"></div>
       <div id="progress" style="width: 100%; height: 6px; background: #333; border-radius: 3px; margin: 15px 0; overflow: hidden;">
@@ -122,14 +139,10 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
     // Verificação inicial do ambiente
     console.log("Iniciando Beemote IA...");
-    if (!document.getElementById('app')) {
-      console.error("Elemento #app não encontrado!");
-      document.body.innerHTML = '<h1 style="color: white; text-align: center;">Erro: Estrutura do aplicativo não carregada</h1>';
-    }
-
+    
     // Implementação mínima do WebLLM como fallback
     class LocalChatModule {
       constructor() {
@@ -142,7 +155,7 @@
       }
       
       async reload(model) {
-        console.log("Carregando modelo local...");
+        console.log("Carregando modelo local:", model);
         if (this.initProgressCallback) {
           const steps = [
             {progress: 0.1, text: "Iniciando fallback local"},
@@ -152,7 +165,7 @@
           ];
           
           for (const step of steps) {
-            this.initProgressCallback(step);
+            if (this.initProgressCallback) this.initProgressCallback(step);
             await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
@@ -161,50 +174,24 @@
       
       async generate(prompt) {
         console.log("Gerando resposta para:", prompt);
-        // Respostas pré-definidas para o modo fallback
-        const responses = [
-          `Entendi que você disse: "${prompt}". No modo básico, minhas respostas são limitadas.`,
-          `Interessante: "${prompt}". Estou no modo simplificado agora.`,
-          `Sobre "${prompt}": No momento estou com recursos reduzidos.`,
-          `Você perguntou sobre "${prompt}". Recarregue a página para tentar o modo completo.`
-        ];
+        // Respostas mais inteligentes no modo fallback
+        const knowledge = {
+          "quem é você": "Sou a Beemote IA, uma inteligência artificial criada para ajudar. No momento estou em modo básico.",
+          "o que você faz": "Posso responder perguntas e ajudar com informações. Recarregue a página para tentar o modo completo.",
+          "como funciona": "Estou aprendendo com sua interação. No modo básico minhas respostas são mais limitadas.",
+          "versão": "Você está usando a versão básica. Para recursos avançados, verifique sua conexão e recarregue."
+        };
+        
+        const lowerPrompt = prompt.toLowerCase();
+        let response = knowledge[lowerPrompt] || 
+          `Entendi que você disse: "${prompt}". No modo básico, minhas respostas são limitadas. Recarregue a página para tentar o modo completo.`;
         
         // Simula um tempo de processamento
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        return responses[Math.floor(Math.random() * responses.length)];
+        return response;
       }
     }
-
-    // Configuração de fontes alternativas
-    const LOAD_STRATEGIES = [
-      {
-        name: "CDN jsDelivr (direto)",
-        action: async () => {
-          console.log("Tentando carregar do jsDelivr...");
-          try {
-            const { ChatModule } = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.1.12/+esm');
-            return ChatModule;
-          } catch (e) {
-            console.warn("Falha ao carregar módulo ESM:", e);
-            await loadScript("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.1.12/dist/web-llm.min.js");
-            return window.ChatModule || (window.__web_llm__ && window.__web_llm__.ChatModule);
-          }
-        }
-      },
-      {
-        name: "Fallback local",
-        action: async () => {
-          console.log("Usando implementação local...");
-          return LocalChatModule;
-        }
-      }
-    ];
-
-    // Estado da aplicação
-    let chat = null;
-    let fallbackMode = false;
-    let currentStrategyIndex = 0;
 
     // Elementos da UI
     const statusEl = document.getElementById('status');
@@ -218,26 +205,17 @@
     const messagesEl = document.getElementById('messages');
     const inputEl = document.getElementById('input');
     const sendBtn = document.getElementById('send');
+    const modelSelect = document.getElementById('model-select');
 
-    // Função para carregar scripts dinamicamente
-    function loadScript(url) {
-      console.log("Carregando script:", url);
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = url;
-        
-        script.onload = () => {
-          console.log("Script carregado com sucesso:", url);
-          resolve();
-        };
-        script.onerror = (err) => {
-          console.error("Falha ao carregar script:", url, err);
-          reject(err);
-        };
-        
-        document.head.appendChild(script);
-      });
-    }
+    // Estado da aplicação
+    let chat = null;
+    let fallbackMode = false;
+    let currentModel = modelSelect.value;
+
+    // Atualiza o modelo selecionado
+    modelSelect.addEventListener('change', () => {
+      currentModel = modelSelect.value;
+    });
 
     // Função para adicionar mensagens ao chat
     function addMessage(text, type) {
@@ -264,45 +242,14 @@
       }
     }
 
-    // Função para tentar carregar o WebLLM
-    async function tryLoadStrategy() {
-      if (currentStrategyIndex >= LOAD_STRATEGIES.length) {
-        throw new Error('Todas as estratégias falharam');
-      }
-
-      const strategy = LOAD_STRATEGIES[currentStrategyIndex];
-      currentStrategyIndex++;
-
-      updateStatus(`Tentando: ${strategy.name}`);
-      progressTextEl.textContent = strategy.name;
-      progressBarEl.style.width = `${(currentStrategyIndex / LOAD_STRATEGIES.length) * 100}%`;
-
+    // Função para inicializar o chat com WebLLM
+    async function initWebLLMChat() {
       try {
-        const ChatModule = await strategy.action();
-        if (!ChatModule) throw new Error('Módulo não retornado');
-        return ChatModule;
-      } catch (error) {
-        console.warn(`Falha na estratégia ${strategy.name}:`, error);
-        return null;
-      }
-    }
-
-    // Função para inicializar o chat
-    async function initChat() {
-      console.log("Iniciando chat...");
-      updateStatus('Inicializando modelo de IA...');
-      
-      try {
-        // Tenta todas as estratégias até encontrar uma que funcione
-        let ChatModule = null;
-        while (currentStrategyIndex < LOAD_STRATEGIES.length && !ChatModule) {
-          ChatModule = await tryLoadStrategy();
-        }
-
-        if (!ChatModule) {
-          throw new Error('Não foi possível carregar nenhuma versão do ChatModule');
-        }
-
+        updateStatus('Carregando módulo de IA...');
+        
+        // Importa o WebLLM diretamente como módulo ES
+        const { ChatModule } = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.1.12/+esm');
+        
         chat = new ChatModule();
         
         // Configura o callback de progresso
@@ -310,11 +257,12 @@
           updateStatus(report.text || 'Carregando modelo...');
           const percent = Math.round(report.progress * 100);
           progressBarEl.style.width = `${percent}%`;
-          progressTextEl.textContent = `Progresso: ${percent}%`;
+          progressTextEl.textContent = `Progresso: ${percent}% - ${report.text || ''}`;
         });
 
-        // Carrega o modelo (usando implementação local se necessário)
-        await chat.reload('default');
+        // Carrega o modelo selecionado
+        updateStatus(`Carregando modelo ${currentModel}...`);
+        await chat.reload(currentModel);
         
         // Sucesso - mostra a interface do chat
         loadingEl.style.display = 'none';
@@ -326,12 +274,8 @@
         addMessage('Olá! Eu sou a Beemote IA. Como posso te ajudar hoje?', 'bot');
         
       } catch (error) {
-        console.error('Erro na inicialização:', error);
-        updateStatus('Erro ao carregar a IA completa', true);
-        progressBarEl.style.background = 'var(--error)';
-        spinnerEl.style.display = 'none';
-        retryBtn.style.display = 'inline-block';
-        liteBtn.style.display = 'inline-block';
+        console.error('Erro ao carregar WebLLM:', error);
+        throw error;
       }
     }
 
@@ -339,37 +283,41 @@
     function initLiteVersion() {
       console.log("Iniciando versão simulada...");
       fallbackMode = true;
-      updateStatus('Modo básico ativado');
-      progressBarEl.style.width = '100%';
-      progressBarEl.style.background = 'var(--success)';
-      spinnerEl.style.display = 'none';
+      chat = new LocalChatModule();
       
-      loadingEl.style.display = 'none';
-      chatEl.style.display = 'block';
-      inputEl.disabled = false;
-      sendBtn.disabled = false;
-      inputEl.focus();
+      // Simula o carregamento do modelo
+      chat.setInitProgressCallback((report) => {
+        updateStatus(report.text || 'Carregando...');
+        const percent = Math.round(report.progress * 100);
+        progressBarEl.style.width = `${percent}%`;
+      });
       
-      addMessage('Você está usando a versão básica da Beemote IA. Algumas funcionalidades são limitadas.', 'bot');
+      // Mostra que está carregando
+      updateStatus('Iniciando modo básico...');
+      progressBarEl.style.width = '0%';
+      
+      setTimeout(async () => {
+        await chat.reload('local-model');
+        
+        updateStatus('Modo básico pronto');
+        progressBarEl.style.width = '100%';
+        progressBarEl.style.background = 'var(--success)';
+        spinnerEl.style.display = 'none';
+        
+        loadingEl.style.display = 'none';
+        chatEl.style.display = 'block';
+        inputEl.disabled = false;
+        sendBtn.disabled = false;
+        inputEl.focus();
+        
+        addMessage('Você está usando a versão básica da Beemote IA. Algumas funcionalidades são limitadas.', 'bot');
+      }, 1500);
     }
 
     // Configura os event listeners
     function setupEventListeners() {
       console.log("Configurando event listeners...");
-      retryBtn.addEventListener('click', () => {
-        console.log("Tentando novamente...");
-        currentStrategyIndex = 0;
-        spinnerEl.style.display = 'block';
-        retryBtn.style.display = 'none';
-        liteBtn.style.display = 'none';
-        initChat();
-      });
-
-      liteBtn.addEventListener('click', () => {
-        console.log("Iniciando versão simulada...");
-        initLiteVersion();
-      });
-
+      
       sendBtn.addEventListener('click', async () => {
         const text = inputEl.value.trim();
         if (!text) return;
@@ -384,11 +332,11 @@
             const reply = await chat.generate(text);
             addMessage(reply, 'bot');
           } else {
-            addMessage('Desculpe, ocorreu um erro inesperado. Por favor, recarregue a página.', 'error');
+            addMessage('Desculpe, ocorreu um erro inesperado.', 'error');
           }
         } catch (error) {
           console.error("Erro ao gerar resposta:", error);
-          addMessage('Ocorreu um erro ao gerar a resposta', 'error');
+          addMessage('Ocorreu um erro ao processar sua mensagem.', 'error');
         } finally {
           inputEl.disabled = false;
           sendBtn.disabled = false;
@@ -402,25 +350,45 @@
           sendBtn.click();
         }
       });
+
+      retryBtn.addEventListener('click', async () => {
+        retryBtn.style.display = 'none';
+        liteBtn.style.display = 'none';
+        spinnerEl.style.display = 'block';
+        progressBarEl.style.background = 'var(--primary)';
+        progressBarEl.style.width = '0%';
+        await initApp();
+      });
+
+      liteBtn.addEventListener('click', initLiteVersion);
+    }
+
+    // Função principal de inicialização
+    async function initApp() {
+      try {
+        // Primeiro tenta carregar o WebLLM completo
+        await initWebLLMChat();
+      } catch (error) {
+        console.error('Falha ao carregar WebLLM:', error);
+        updateStatus('Erro ao carregar IA completa', true);
+        spinnerEl.style.display = 'none';
+        retryBtn.style.display = 'inline-block';
+        liteBtn.style.display = 'inline-block';
+      }
     }
 
     // Inicia a aplicação
     console.log("Iniciando aplicação...");
     try {
       setupEventListeners();
-      initChat();
+      initApp();
     } catch (error) {
       console.error("Erro fatal na inicialização:", error);
-      document.body.innerHTML = `
-        <div style="color: white; text-align: center; padding: 20px;">
-          <h1>Erro crítico no Beemote IA</h1>
-          <p>O aplicativo encontrou um erro grave e não pode ser iniciado.</p>
-          <p>Por favor, recarregue a página ou tente novamente mais tarde.</p>
-          <button onclick="window.location.reload()" style="padding: 10px 20px; background: ${error}; color: white; border: none; border-radius: 5px; margin-top: 20px;">
-            Recarregar Página
-          </button>
-        </div>
-      `;
+      statusEl.textContent = "Erro crítico ao iniciar";
+      statusEl.style.color = "var(--error)";
+      spinnerEl.style.display = "none";
+      retryBtn.style.display = "inline-block";
+      liteBtn.style.display = "inline-block";
     }
   </script>
 </body>

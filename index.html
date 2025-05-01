@@ -2,147 +2,65 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Beemote IA</title>
-  <script type="module">
-    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.10.0';
-
-    let generator;
-    const status = document.getElementById("status");
-    const loaderBar = document.getElementById("loader-bar");
-
-    async function init() {
-      let width = 0;
-      const loader = setInterval(() => {
-        width = Math.min(width + 1, 95);
-        loaderBar.style.width = width + '%';
-      }, 100);
-
-      status.textContent = "Carregando modelo Beemote IA...";
-      generator = await pipeline('text-generation', 'Xenova/distilgpt2');
-      clearInterval(loader);
-      loaderBar.style.width = '100%';
-      document.getElementById("loader").style.display = "none";
-      document.getElementById("chat").style.display = "flex";
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      init();
-
-      const form = document.getElementById("form");
-      const input = document.getElementById("input");
-      const messages = document.getElementById("messages");
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const userText = input.value.trim();
-        if (!userText) return;
-        input.value = "";
-        messages.innerHTML += `<div class="bubble user">${userText}</div>`;
-        messages.innerHTML += `<div class="bubble loading">...</div>`;
-        messages.scrollTop = messages.scrollHeight;
-
-        const output = await generator(userText, { max_new_tokens: 60 });
-        document.querySelector(".bubble.loading").remove();
-        messages.innerHTML += `<div class="bubble bot">${output[0].generated_text}</div>`;
-        messages.scrollTop = messages.scrollHeight;
-      });
-    });
-  </script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-    }
-
+    * { box-sizing: border-box; margin: 0; font-family: 'Segoe UI', sans-serif; }
+    html, body { height: 100%; overflow: hidden; }
     body {
-      height: 100vh;
       display: flex;
       flex-direction: column;
-      background: linear-gradient(to right, #f0f4f8, #e8eff5);
+      background: #f2f5fa;
       color: #333;
     }
 
-    #loader {
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-
-    #loader-bar-container {
-      width: 80%;
-      height: 10px;
-      background: #ddd;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 20px;
-    }
-
-    #loader-bar {
-      height: 100%;
-      background: #1d9bf0;
-      width: 0%;
-      transition: width 0.3s;
-    }
-
-    #chat {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
+    #chat { flex: 1; display: flex; flex-direction: column; height: 100%; }
     #messages {
       flex: 1;
-      padding: 20px;
+      padding: 16px;
       overflow-y: auto;
+      scroll-behavior: smooth;
     }
 
     .bubble {
       padding: 12px 16px;
-      margin: 10px 0;
+      margin: 8px 0;
       border-radius: 15px;
       max-width: 80%;
+      word-wrap: break-word;
       animation: fadeIn 0.3s ease-in;
     }
+    .user { background: #1d9bf0; color: white; align-self: flex-end; }
+    .bot { background: #e2e8f0; color: #333; align-self: flex-start; }
 
-    .user {
-      background: #1d9bf0;
-      color: white;
-      align-self: flex-end;
-    }
-
-    .bot {
-      background: #e1e9f1;
-      color: #333;
-      align-self: flex-start;
-    }
-
-    .loading {
-      background: #ccc;
-      color: white;
+    .typing-overlay {
+      background: rgba(255, 255, 255, 0.8);
+      position: absolute;
+      bottom: 64px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      padding: 8px;
       font-style: italic;
-      align-self: flex-start;
+      font-size: 0.9em;
+      display: none;
+      pointer-events: none;
     }
 
     #form {
       display: flex;
-      border-top: 1px solid #ccc;
       padding: 10px;
       background: white;
+      border-top: 1px solid #ccc;
     }
-
     #input {
       flex: 1;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 1em;
+      outline: none;
     }
-
     button {
       background: #1d9bf0;
       color: white;
@@ -154,37 +72,74 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 600px) {
-      .bubble {
-        max-width: 100%;
-        font-size: 0.95em;
-      }
-
-      button {
-        padding: 8px 12px;
-      }
     }
   </style>
 </head>
 <body>
-  <div id="loader">
-    <h1 style="color:#1d9bf0;">Beemote IA</h1>
-    <p id="status">Iniciando...</p>
-    <div id="loader-bar-container">
-      <div id="loader-bar"></div>
-    </div>
-  </div>
-
   <div id="chat">
     <div id="messages"></div>
+    <div class="typing-overlay" id="overlay">Beemote está digitando...</div>
     <form id="form">
-      <input type="text" id="input" placeholder="Digite sua pergunta..." autocomplete="off" />
+      <input type="text" id="input" placeholder="Pergunte algo..." autocomplete="off" />
       <button type="submit">Enviar</button>
     </form>
   </div>
+
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.10.0';
+    let generator = null;
+    const fallback = "Desculpe, estou com dificuldades para responder agora.";
+
+    const init = async () => {
+      generator = await pipeline('text-generation', 'Xenova/distilgpt2');
+    };
+
+    const overlay = document.getElementById("overlay");
+    const messages = document.getElementById("messages");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+
+    const scrollBottom = () => messages.scrollTop = messages.scrollHeight;
+
+    const showOverlay = (text = "Beemote está digitando...") => {
+      overlay.textContent = text;
+      overlay.style.display = "block";
+    };
+    const hideOverlay = () => overlay.style.display = "none";
+
+    const respond = async (text) => {
+      try {
+        showOverlay();
+        const response = await Promise.race([
+          generator(text, { max_new_tokens: 60 }),
+          new Promise((_, reject) => setTimeout(() => reject("timeout"), 8000))
+        ]);
+        return response[0].generated_text;
+      } catch {
+        return fallback;
+      } finally {
+        hideOverlay();
+      }
+    };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userText = input.value.trim();
+      if (!userText) return;
+      input.value = "";
+
+      messages.innerHTML += `<div class="bubble user">${userText}</div>`;
+      scrollBottom();
+
+      const reply = await respond(userText);
+      messages.innerHTML += `<div class="bubble bot">${reply}</div>`;
+      scrollBottom();
+    });
+
+    window.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('resize', scrollBottom);
+  </script>
 </body>
 </html>

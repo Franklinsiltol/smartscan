@@ -1,483 +1,138 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!DOCTYPE html><html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beemote IA - GitHub Pages</title>
-    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0"></script>
-    <style>
-        :root {
-            --primary-color: #6e48aa;
-            --primary-dark: #4b2d7f;
-            --secondary-color: #9d50bb;
-            --background-dark: #1a1a2e;
-            --background-darker: #16213e;
-            --text-color: #e6e6e6;
-            --text-light: #ffffff;
-            --user-message: #4b2d7f;
-            --ai-message: #16213e;
-            --sidebar-width: 250px;
-            --mobile-breakpoint: 768px;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--background-dark);
-            color: var(--text-color);
-            height: 100vh;
-            display: flex;
-            overflow: hidden;
-        }
-
-        /* (Manter todos os estilos anteriores) */
-        /* ... */
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beemote IA</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-paplfLaJm3MXpjRMX5eZoHoDbSxLG+4WlE4YQZ8zaxRac5UeyOkEl0+rQZuB+2eqIMRVmlS+q0YGyM1X2zjDiQ==" crossorigin="anonymous" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0b0c10;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #1f2833;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #66fcf1;
+    }
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .msg {
+      padding: 0.75rem;
+      border-radius: 1rem;
+      max-width: 80%;
+      animation: fadeIn 0.4s ease;
+    }
+    .user {
+      align-self: flex-end;
+      background: #45a29e;
+    }
+    .bot {
+      align-self: flex-start;
+      background: #1f2833;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px)}
+      to {opacity: 1; transform: translateY(0)}
+    }
+    footer {
+      padding: 0.5rem;
+      background: #1f2833;
+      display: flex;
+      gap: 0.5rem;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.75rem;
+      border: none;
+      border-radius: 0.5rem;
+      background: #66fcf1;
+      color: #0b0c10;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #loadingBarContainer {
+      height: 5px;
+      background: #0b0c10;
+    }
+    #loadingBar {
+      height: 5px;
+      width: 0;
+      background: #66fcf1;
+      transition: width 0.3s ease;
+    }
+  </style>
 </head>
 <body>
-    <!-- (Manter a mesma estrutura HTML) -->
-    <div class="sidebar">
-        <!-- ... -->
-    </div>
+  <header>Beemote IA</header>
+  <div id="loadingBarContainer"><div id="loadingBar"></div></div>
+  <div id="chat"></div>
+  <footer>
+    <input type="text" id="userInput" placeholder="Digite sua mensagem..." />
+    <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+  </footer>  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.10.1'
 
-    <div class="main-content">
-        <!-- ... -->
-    </div>
+    let chat = document.getElementById("chat");
+    let input = document.getElementById("userInput");
+    let loadingBar = document.getElementById("loadingBar");
 
-    <div class="loading-container" id="loading-container">
-        <div class="loading-spinner"></div>
-        <div class="loading-text" id="loading-text">Inicializando Beemote IA...</div>
-    </div>
+    let model, running = false;
+    async function loadModel() {
+      loadingBar.style.width = '10%';
+      model = await pipeline('text-generation', 'Xenova/phi-1_5');
+      loadingBar.style.width = '100%';
+      setTimeout(() => loadingBar.style.display = 'none', 500);
+    }
 
-    <div class="device-info" id="device-info"></div>
+    async function sendMessage() {
+      if (input.value.trim() === '' || running) return;
+      let userMsg = input.value.trim();
+      input.value = '';
+      appendMessage(userMsg, 'user');
+      running = true;
 
-    <script type="module">
-        // Configurações específicas para GitHub Pages
-        transformers.env.remoteHost = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0/assets/';
-        transformers.env.remotePath = '';
-        transformers.env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0/dist/';
+      appendMessage('...', 'bot', true);
+      const placeholder = chat.querySelector('.bot.typing');
+      const response = await model(userMsg, { max_new_tokens: 100 });
 
-        // Database setup
-        const DB_NAME = 'BeemoteIADB_GitHub';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'chats';
-        let db;
-        let currentChatId = null;
-        let currentChatTitle = 'Novo Chat';
-        let pipeline;
-        let modelLoaded = false;
+      placeholder.textContent = response[0].generated_text.replace(userMsg, '').trim();
+      placeholder.classList.remove('typing');
+      chat.scrollTop = chat.scrollHeight;
+      running = false;
+    }
 
-        // DOM elements
-        const loadingText = document.getElementById('loading-text');
-        const deviceInfo = document.getElementById('device-info');
+    function appendMessage(text, sender, typing = false) {
+      const div = document.createElement('div');
+      div.className = `msg ${sender}` + (typing ? ' typing' : '');
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-        // Initialize the app
-        async function initApp() {
-            showDeviceInfo();
-            await initDB();
-            await loadModelWithFallback();
-            loadChatHistory();
-            setupEventListeners();
-            
-            // Timeout de segurança para o loading
-            setTimeout(() => {
-                if (loadingContainer.style.display !== 'none') {
-                    loadingContainer.style.display = 'none';
-                    addMessageToChat('ai', 'Bem-vindo ao Beemote IA! Como posso ajudar?');
-                }
-            }, 120000); // 2 minutos de timeout
-        }
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
 
-        // Mostrar informações do dispositivo
-        function showDeviceInfo() {
-            const info = {
-                Backend: transformers.backends.current,
-                Model: 'Phi-2 (fallback)'
-            };
-            
-            deviceInfo.textContent = Object.entries(info)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(' | ');
-        }
-
-        // Carregar modelo com fallbacks para GitHub Pages
-        async function loadModelWithFallback() {
-            const modelsToTry = [
-                'Xenova/phi-2', // Modelo principal (menor e mais estável)
-                'Xenova/LaMini-Flan-T5-248M' // Fallback alternativo
-            ];
-
-            for (const model of modelsToTry) {
-                try {
-                    loadingText.textContent = `Carregando ${model}...`;
-                    
-                    pipeline = await transformers.pipeline(
-                        'text-generation',
-                        model,
-                        {
-                            quantized: true,
-                            progress_callback: (progress) => {
-                                if (progress.status === 'ready') {
-                                    modelLoaded = true;
-                                    loadingContainer.style.display = 'none';
-                                    addMessageToChat('ai', `Olá! Sou o Beemote IA (${model}). Como posso ajudar?`);
-                                    saveMessage('ai', `Olá! Sou o Beemote IA (${model}). Como posso ajudar?`);
-                                    deviceInfo.textContent = `Backend: ${transformers.backends.current} | Model: ${model}`;
-                                } else {
-                                    loadingText.textContent = `Carregando ${model}... ${Math.round(progress.progress * 100)}%`;
-                                }
-                            }
-                        }
-                    );
-                    
-                    return; // Sai do loop se carregar com sucesso
-                } catch (error) {
-                    console.error(`Erro ao carregar ${model}:`, error);
-                    continue; // Tenta o próximo modelo
-                }
-            }
-            
-            // Se todos os modelos falharem
-            loadingText.textContent = 'Não foi possível carregar os modelos. Recarregue a página.';
-            modelLoaded = false;
-        }
-
-        // (Manter todas as outras funções iguais da versão anterior)
-        // initDB, generateAIResponse, loadChatHistory, createNewChat, 
-        // loadChat, saveMessage, addMessageToChat, showTypingIndicator,
-        // hideTypingIndicator, exportChatHistory, setupEventListeners
-
-        // Initialize IndexedDB
-        function initDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                    }
-                };
-                
-                request.onsuccess = (event) => {
-                    db = event.target.result;
-                    resolve();
-                };
-                
-                request.onerror = (event) => {
-                    console.error('Error opening database:', event.target.error);
-                    reject(event.target.error);
-                };
-            });
-        }
-
-        // Generate AI response
-        async function generateAIResponse(prompt) {
-            if (!modelLoaded) {
-                return "Desculpe, o modelo ainda não está pronto. Por favor, aguarde.";
-            }
-            
-            try {
-                showTypingIndicator();
-                
-                const response = await pipeline(prompt, {
-                    max_new_tokens: 256,
-                    temperature: 0.7,
-                    do_sample: true,
-                });
-                
-                hideTypingIndicator();
-                return response[0].generated_text.replace(prompt, '').trim();
-            } catch (error) {
-                console.error('Error generating response:', error);
-                hideTypingIndicator();
-                return "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.";
-            }
-        }
-
-        // Load chat history from DB
-        function loadChatHistory() {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
-            
-            request.onsuccess = (event) => {
-                const chats = event.target.result;
-                historyList.innerHTML = '';
-                
-                if (chats.length === 0) {
-                    const emptyMsg = document.createElement('div');
-                    emptyMsg.textContent = 'Nenhum histórico encontrado';
-                    emptyMsg.style.padding = '20px';
-                    emptyMsg.style.color = '#999';
-                    historyList.appendChild(emptyMsg);
-                    return;
-                }
-                
-                chats.sort((a, b) => b.timestamp - a.timestamp).forEach(chat => {
-                    const historyItem = document.createElement('div');
-                    historyItem.className = 'history-item';
-                    historyItem.textContent = chat.title || `Chat ${new Date(chat.timestamp).toLocaleString()}`;
-                    historyItem.dataset.chatId = chat.id;
-                    
-                    historyItem.addEventListener('click', () => {
-                        loadChat(chat.id);
-                    });
-                    
-                    historyList.appendChild(historyItem);
-                });
-            };
-            
-            request.onerror = (event) => {
-                console.error('Error loading chat history:', event.target.error);
-            };
-        }
-
-        // Create a new chat
-        function createNewChat() {
-            currentChatId = Date.now().toString();
-            currentChatTitle = 'Novo Chat';
-            chatTitle.textContent = currentChatTitle;
-            chatMessages.innerHTML = '';
-            chatInput.focus();
-        }
-
-        // Load a specific chat
-        function loadChat(chatId) {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.get(chatId);
-            
-            request.onsuccess = (event) => {
-                const chat = event.target.result;
-                if (chat) {
-                    currentChatId = chat.id;
-                    currentChatTitle = chat.title || `Chat ${new Date(chat.timestamp).toLocaleString()}`;
-                    chatTitle.textContent = currentChatTitle;
-                    
-                    // Clear current messages
-                    chatMessages.innerHTML = '';
-                    
-                    // Add messages to the chat
-                    chat.messages.forEach(msg => {
-                        addMessageToChat(msg.role, msg.content);
-                    });
-                    
-                    // Update active state in history list
-                    document.querySelectorAll('.history-item').forEach(item => {
-                        item.classList.remove('active');
-                        if (item.dataset.chatId === chatId) {
-                            item.classList.add('active');
-                        }
-                    });
-                    
-                    // Scroll to bottom
-                    setTimeout(() => {
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }, 100);
-                }
-            };
-            
-            request.onerror = (event) => {
-                console.error('Error loading chat:', event.target.error);
-            };
-        }
-
-        // Save a message to the current chat
-        function saveMessage(role, content) {
-            if (!currentChatId) {
-                currentChatId = Date.now().toString();
-            }
-            
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            // First, try to get the existing chat
-            const getRequest = store.get(currentChatId);
-            
-            getRequest.onsuccess = (event) => {
-                const chat = event.target.result || {
-                    id: currentChatId,
-                    timestamp: Date.now(),
-                    messages: [],
-                    title: currentChatTitle
-                };
-                
-                // Add the new message
-                chat.messages.push({ role, content });
-                
-                // If this is the first user message, set the title
-                if (role === 'user' && chat.messages.length === 1) {
-                    const shortMessage = content.length > 30 ? content.substring(0, 30) + '...' : content;
-                    chat.title = shortMessage;
-                    currentChatTitle = shortMessage;
-                    chatTitle.textContent = currentChatTitle;
-                }
-                
-                // Put the updated chat back in the store
-                store.put(chat);
-                
-                // Update the history list if this is a new chat
-                if (!event.target.result) {
-                    loadChatHistory();
-                }
-            };
-            
-            getRequest.onerror = (event) => {
-                console.error('Error saving message:', event.target.error);
-            };
-        }
-
-        // Add a message to the chat UI
-        function addMessageToChat(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}-message`;
-            messageDiv.textContent = content;
-            chatMessages.appendChild(messageDiv);
-            
-            // Scroll to the new message
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Show typing indicator
-        function showTypingIndicator() {
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'typing-indicator';
-            typingDiv.id = 'typing-indicator';
-            
-            for (let i = 0; i < 3; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'typing-dot';
-                typingDiv.appendChild(dot);
-            }
-            
-            chatMessages.appendChild(typingDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Hide typing indicator
-        function hideTypingIndicator() {
-            const typingIndicator = document.getElementById('typing-indicator');
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-        }
-
-        // Export chat history
-        function exportChatHistory() {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
-            
-            request.onsuccess = (event) => {
-                const chats = event.target.result;
-                if (chats.length === 0) {
-                    alert('Nenhum histórico para exportar.');
-                    return;
-                }
-                
-                let exportText = '';
-                
-                chats.sort((a, b) => a.timestamp - b.timestamp).forEach(chat => {
-                    exportText += `=== Chat: ${chat.title || new Date(chat.timestamp).toLocaleString()} ===\n\n`;
-                    
-                    chat.messages.forEach(msg => {
-                        const prefix = msg.role === 'user' ? 'Você: ' : 'Beemote IA: ';
-                        exportText += `${prefix}${msg.content}\n\n`;
-                    });
-                    
-                    exportText += '\n';
-                });
-                
-                // Create download link
-                const blob = new Blob([exportText], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `beemote_ia_historico_${new Date().toISOString().split('T')[0]}.txt`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            };
-            
-            request.onerror = (event) => {
-                console.error('Error exporting chat history:', event.target.error);
-                alert('Erro ao exportar o histórico.');
-            };
-        }
-
-        // Setup event listeners
-        function setupEventListeners() {
-            // Toggle sidebar on mobile
-            menuToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
-
-            // New chat button
-            newChatBtn.addEventListener('click', () => {
-                createNewChat();
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('open');
-                }
-            });
-
-            // History button
-            historyBtn.addEventListener('click', () => {
-                loadChatHistory();
-            });
-
-            // Export button
-            exportBtn.addEventListener('click', () => {
-                exportChatHistory();
-            });
-
-            // Chat form submission
-            chatForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const message = chatInput.value.trim();
-                if (!message) return;
-                
-                // Disable input while processing
-                chatInput.disabled = true;
-                sendButton.disabled = true;
-                
-                // Add user message to chat
-                addMessageToChat('user', message);
-                saveMessage('user', message);
-                
-                // Clear input
-                chatInput.value = '';
-                
-                // Generate AI response
-                const aiResponse = await generateAIResponse(message);
-                
-                // Add AI response to chat
-                addMessageToChat('ai', aiResponse);
-                saveMessage('ai', aiResponse);
-                
-                // Re-enable input
-                chatInput.disabled = false;
-                sendButton.disabled = false;
-                chatInput.focus();
-            });
-
-            // Close sidebar when clicking outside on mobile
-            document.addEventListener('click', (e) => {
-                if (window.innerWidth <= 768 && sidebar.classList.contains('open') && 
-                    !sidebar.contains(e.target) && e.target !== menuToggle) {
-                    sidebar.classList.remove('open');
-                }
-            });
-        }
-
-        // Initialize the app when the DOM is loaded
-        document.addEventListener('DOMContentLoaded', initApp);
-    </script>
-</body>
+    loadModel();
+  </script></body>
 </html>

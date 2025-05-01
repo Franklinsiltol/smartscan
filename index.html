@@ -612,4 +612,230 @@
             const request = store.get(chatId);
             
             request.onsuccess = (event) => {
-              
+                const chat = event.target.result;
+                if (chat) {
+                    currentChatId = chat.id;
+                    currentChatTitle = chat.title || `Chat ${new Date(chat.timestamp).toLocaleString()}`;
+                    chatTitle.textContent = currentChatTitle;
+                    
+                    // Clear current messages
+                    chatMessages.innerHTML = '';
+                    
+                    // Add messages to the chat
+                    chat.messages.forEach(msg => {
+                        addMessageToChat(msg.role, msg.content);
+                    });
+                    
+                    // Update active state in history list
+                    document.querySelectorAll('.history-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.dataset.chatId === chatId) {
+                            item.classList.add('active');
+                        }
+                    });
+                    
+                    // Scroll to bottom
+                    setTimeout(() => {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 100);
+                }
+            };
+            
+            request.onerror = (event) => {
+                console.error('Error loading chat:', event.target.error);
+            };
+        }
+
+        // Save a message to the current chat
+        function saveMessage(role, content) {
+            if (!currentChatId) {
+                currentChatId = Date.now().toString();
+            }
+            
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            
+            // First, try to get the existing chat
+            const getRequest = store.get(currentChatId);
+            
+            getRequest.onsuccess = (event) => {
+                const chat = event.target.result || {
+                    id: currentChatId,
+                    timestamp: Date.now(),
+                    messages: [],
+                    title: currentChatTitle
+                };
+                
+                // Add the new message
+                chat.messages.push({ role, content });
+                
+                // If this is the first user message, set the title
+                if (role === 'user' && chat.messages.length === 1) {
+                    const shortMessage = content.length > 30 ? content.substring(0, 30) + '...' : content;
+                    chat.title = shortMessage;
+                    currentChatTitle = shortMessage;
+                    chatTitle.textContent = currentChatTitle;
+                }
+                
+                // Put the updated chat back in the store
+                store.put(chat);
+                
+                // Update the history list if this is a new chat
+                if (!event.target.result) {
+                    loadChatHistory();
+                }
+            };
+            
+            getRequest.onerror = (event) => {
+                console.error('Error saving message:', event.target.error);
+            };
+        }
+
+        // Add a message to the chat UI
+        function addMessageToChat(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to the new message
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typing-indicator';
+            
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'typing-dot';
+                typingDiv.appendChild(dot);
+            }
+            
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        // Export chat history
+        function exportChatHistory() {
+            const transaction = db.transaction(STORE_NAME, 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+            
+            request.onsuccess = (event) => {
+                const chats = event.target.result;
+                if (chats.length === 0) {
+                    alert('Nenhum histórico para exportar.');
+                    return;
+                }
+                
+                let exportText = '';
+                
+                chats.sort((a, b) => a.timestamp - b.timestamp).forEach(chat => {
+                    exportText += `=== Chat: ${chat.title || new Date(chat.timestamp).toLocaleString()} ===\n\n`;
+                    
+                    chat.messages.forEach(msg => {
+                        const prefix = msg.role === 'user' ? 'Você: ' : 'Beemote IA: ';
+                        exportText += `${prefix}${msg.content}\n\n`;
+                    });
+                    
+                    exportText += '\n';
+                });
+                
+                // Create download link
+                const blob = new Blob([exportText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `beemote_ia_historico_${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+            
+            request.onerror = (event) => {
+                console.error('Error exporting chat history:', event.target.error);
+                alert('Erro ao exportar o histórico.');
+            };
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Toggle sidebar on mobile
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // New chat button
+            newChatBtn.addEventListener('click', () => {
+                createNewChat();
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                }
+            });
+
+            // History button
+            historyBtn.addEventListener('click', () => {
+                loadChatHistory();
+            });
+
+            // Export button
+            exportBtn.addEventListener('click', () => {
+                exportChatHistory();
+            });
+
+            // Chat form submission
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Disable input while processing
+                chatInput.disabled = true;
+                sendButton.disabled = true;
+                
+                // Add user message to chat
+                addMessageToChat('user', message);
+                saveMessage('user', message);
+                
+                // Clear input
+                chatInput.value = '';
+                
+                // Generate AI response
+                const aiResponse = await generateAIResponse(message);
+                
+                // Add AI response to chat
+                addMessageToChat('ai', aiResponse);
+                saveMessage('ai', aiResponse);
+                
+                // Re-enable input
+                chatInput.disabled = false;
+                sendButton.disabled = false;
+                chatInput.focus();
+            });
+
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 && sidebar.classList.contains('open') && 
+                    !sidebar.contains(e.target) && e.target !== menuToggle) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

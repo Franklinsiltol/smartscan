@@ -7,8 +7,6 @@
   <style>
     :root {
       --primary: #FFA500;
-      --error: #f44336;
-      --success: #4CAF50;
       --bg: #121212;
       --text: #ffffff;
     }
@@ -18,18 +16,15 @@
       color: var(--text);
       margin: 0;
       padding: 20px;
-      line-height: 1.6;
     }
-    #app {
+    #chat-container {
       max-width: 800px;
       margin: 0 auto;
     }
-    #loading {
-      text-align: center;
-      margin-top: 50px;
-    }
-    #chat {
-      display: none;
+    #messages {
+      height: 70vh;
+      overflow-y: auto;
+      padding: 10px;
     }
     .message {
       margin: 10px 0;
@@ -37,52 +32,38 @@
       border-radius: 8px;
       max-width: 80%;
     }
-    .bot {
-      background: rgba(129, 199, 132, 0.2);
-      border: 1px solid rgba(129, 199, 132, 0.5);
-      margin-right: auto;
-    }
     .user {
       background: rgba(79, 195, 247, 0.2);
-      border: 1px solid rgba(79, 195, 247, 0.5);
       margin-left: auto;
     }
-    .error {
-      background: rgba(244, 67, 54, 0.2);
-      border: 1px solid var(--error);
+    .bot {
+      background: rgba(129, 199, 132, 0.2);
+      margin-right: auto;
     }
-    .status {
-      color: #aaa;
-      font-size: 0.9em;
-      margin: 5px 0;
+    #input-area {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
     }
-    button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 20px;
-      font-weight: bold;
-      cursor: pointer;
-      margin: 5px;
-    }
-    #retry {
-      background: var(--primary);
-      color: white;
-    }
-    #lite {
-      background: var(--success);
-      color: white;
-    }
-    #send {
-      background: var(--primary);
-      color: white;
-    }
-    input {
+    #user-input {
+      flex: 1;
       padding: 10px 15px;
       border-radius: 20px;
-      border: 1px solid #333;
+      border: none;
       background: #2a2a2a;
       color: var(--text);
-      flex: 1;
+    }
+    #send-btn {
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    #loading {
+      text-align: center;
+      margin: 20px 0;
     }
     .spinner {
       border: 4px solid rgba(0, 0, 0, 0.1);
@@ -91,305 +72,151 @@
       border-radius: 50%;
       border-left-color: var(--primary);
       animation: spin 1s linear infinite;
-      margin: 20px auto;
+      margin: 0 auto;
     }
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    .model-selector {
-      margin: 15px 0;
-      text-align: center;
-    }
-    .model-selector select {
-      padding: 8px 12px;
-      border-radius: 20px;
-      background: #2a2a2a;
-      color: white;
-      border: 1px solid #333;
-    }
   </style>
 </head>
 <body>
-  <div id="app">
+  <div id="chat-container">
+    <h1 style="text-align: center; color: var(--primary)">🐝 Beemote IA</h1>
+    <div id="messages"></div>
     <div id="loading">
-      <h1>🐝 Beemote IA</h1>
-      <p id="status">Inicializando sistema...</p>
-      <div class="model-selector">
-        <select id="model-select">
-          <option value="TinyLlama-1.1B-Chat-v0.3-q4f16_1">TinyLlama (Rápido)</option>
-          <option value="phi-2-q4f16_1">Phi-2 (Padrão)</option>
-        </select>
-      </div>
-      <div class="status" id="progress-text">Conectando...</div>
-      <div class="spinner" id="spinner"></div>
-      <div id="progress" style="width: 100%; height: 6px; background: #333; border-radius: 3px; margin: 15px 0; overflow: hidden;">
-        <div id="progress-bar" style="height: 100%; width: 0%; background: var(--primary); transition: width 0.3s;"></div>
-      </div>
-      <button id="retry" style="display: none;">Tentar Novamente</button>
-      <button id="lite" style="display: none;">Usar Versão Simulada</button>
+      <div class="spinner"></div>
+      <p>Carregando modelo pequeno...</p>
     </div>
-
-    <div id="chat">
-      <div id="messages" style="height: 70vh; overflow-y: auto; padding: 10px;"></div>
-      <div style="display: flex; gap: 10px; margin-top: 10px; padding: 10px;">
-        <input type="text" id="input" placeholder="Digite sua mensagem..." disabled>
-        <button id="send" disabled>Enviar</button>
-      </div>
+    <div id="input-area" style="display: none;">
+      <input type="text" id="user-input" placeholder="Digite sua mensagem...">
+      <button id="send-btn">Enviar</button>
     </div>
   </div>
 
-  <script type="module">
-    // Verificação inicial do ambiente
-    console.log("Iniciando Beemote IA...");
-    
-    // Implementação mínima do WebLLM como fallback
-    class LocalChatModule {
+  <script>
+    // Mini LLM local - modelo muito simplificado
+    class TinyLLM {
       constructor() {
-        console.log("Iniciando fallback local...");
-        this.initProgressCallback = null;
+        this.model = this.createModel();
+        this.tokenizer = this.createTokenizer();
       }
-      
-      setInitProgressCallback(cb) {
-        this.initProgressCallback = cb;
-      }
-      
-      async reload(model) {
-        console.log("Carregando modelo local:", model);
-        if (this.initProgressCallback) {
-          const steps = [
-            {progress: 0.1, text: "Iniciando fallback local"},
-            {progress: 0.3, text: "Preparando modelo simples"},
-            {progress: 0.6, text: "Carregando dados básicos"},
-            {progress: 1.0, text: "Pronto para conversar"}
-          ];
-          
-          for (const step of steps) {
-            if (this.initProgressCallback) this.initProgressCallback(step);
-            await new Promise(resolve => setTimeout(resolve, 300));
+
+      createModel() {
+        // Um modelo neural mínimo (2 camadas, 16 neurônios)
+        return {
+          layers: [
+            { weights: new Array(16).fill(0).map(() => Math.random() * 0.2 - 0.1) },
+            { weights: new Array(16).fill(0).map(() => Math.random() * 0.2 - 0.1) }
+          ],
+          predict: function(input) {
+            // Simulação simplista de uma rede neural
+            let output = 0;
+            for (let i = 0; i < input.length; i++) {
+              output += input[i] * this.layers[0].weights[i % 16];
+              output += input[i] * this.layers[1].weights[i % 16];
+            }
+            return output > 0.5 ? 1 : 0;
           }
-        }
-        return Promise.resolve();
-      }
-      
-      async generate(prompt) {
-        console.log("Gerando resposta para:", prompt);
-        // Respostas mais inteligentes no modo fallback
-        const knowledge = {
-          "quem é você": "Sou a Beemote IA, uma inteligência artificial criada para ajudar. No momento estou em modo básico.",
-          "o que você faz": "Posso responder perguntas e ajudar com informações. Recarregue a página para tentar o modo completo.",
-          "como funciona": "Estou aprendendo com sua interação. No modo básico minhas respostas são mais limitadas.",
-          "versão": "Você está usando a versão básica. Para recursos avançados, verifique sua conexão e recarregue."
         };
+      }
+
+      createTokenizer() {
+        // Tokenizador básico
+        return {
+          encode: function(text) {
+            const tokens = [];
+            for (let i = 0; i < text.length; i++) {
+              tokens.push(text.charCodeAt(i) / 255);
+            }
+            // Preenche com zeros até 16 valores
+            while (tokens.length < 16) tokens.push(0);
+            return tokens.slice(0, 16);
+          }
+        };
+      }
+
+      async generate(prompt) {
+        // Simula processamento
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        const lowerPrompt = prompt.toLowerCase();
-        let response = knowledge[lowerPrompt] || 
-          `Entendi que você disse: "${prompt}". No modo básico, minhas respostas são limitadas. Recarregue a página para tentar o modo completo.`;
+        const tokens = this.tokenizer.encode(prompt.toLowerCase());
+        const prediction = this.model.predict(tokens);
         
-        // Simula um tempo de processamento
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Respostas baseadas na predição
+        const responses = [
+          "Entendi sua mensagem sobre " + prompt + ". Estou em modo simplificado.",
+          "Interessante! Sobre " + prompt + ", posso dizer que é um tópico relevante.",
+          "No meu modo básico, minha análise sobre " + prompt + " é limitada.",
+          "Você mencionou " + prompt + ". Gostaria de saber mais sobre isso?",
+          "Estou processando sua pergunta sobre " + prompt + "...",
+          "Sobre " + prompt + ", posso oferecer algumas reflexões básicas."
+        ];
         
-        return response;
+        return responses[Math.floor(prediction * responses.length)];
       }
     }
 
-    // Elementos da UI
-    const statusEl = document.getElementById('status');
-    const progressTextEl = document.getElementById('progress-text');
-    const progressBarEl = document.getElementById('progress-bar');
-    const spinnerEl = document.getElementById('spinner');
-    const retryBtn = document.getElementById('retry');
-    const liteBtn = document.getElementById('lite');
-    const loadingEl = document.getElementById('loading');
-    const chatEl = document.getElementById('chat');
+    // Elementos da interface
     const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
-    const modelSelect = document.getElementById('model-select');
+    const inputEl = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const loadingEl = document.getElementById('loading');
+    const inputArea = document.getElementById('input-area');
 
-    // Estado da aplicação
-    let chat = null;
-    let fallbackMode = false;
-    let currentModel = modelSelect.value;
-
-    // Atualiza o modelo selecionado
-    modelSelect.addEventListener('change', () => {
-      currentModel = modelSelect.value;
-    });
+    // Inicialização
+    async function init() {
+      try {
+        // Cria e carrega o modelo pequeno
+        const llm = new TinyLLM();
+        
+        // Mostra que está pronto
+        loadingEl.style.display = 'none';
+        inputArea.style.display = 'flex';
+        addMessage('Olá! Eu sou a Beemote IA com um mini modelo local. Como posso ajudar?', 'bot');
+        
+        return llm;
+      } catch (error) {
+        console.error("Erro ao carregar o modelo:", error);
+        addMessage("Erro ao carregar o modelo. Recarregue a página.", "error");
+        return null;
+      }
+    }
 
     // Função para adicionar mensagens ao chat
-    function addMessage(text, type) {
-      console.log("Adicionando mensagem:", type, text);
-      try {
-        const messageEl = document.createElement('div');
-        messageEl.className = `message ${type}`;
-        messageEl.textContent = text;
-        messagesEl.appendChild(messageEl);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      } catch (e) {
-        console.error("Erro ao adicionar mensagem:", e);
-      }
+    function addMessage(text, sender) {
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${sender}`;
+      messageEl.textContent = text;
+      messagesEl.appendChild(messageEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    // Função para atualizar o status
-    function updateStatus(message, isError = false) {
-      console.log("Atualizando status:", message);
-      try {
-        statusEl.textContent = message;
-        statusEl.style.color = isError ? 'var(--error)' : 'inherit';
-      } catch (e) {
-        console.error("Erro ao atualizar status:", e);
-      }
+    // Envia mensagem
+    async function sendMessage(llm) {
+      const text = inputEl.value.trim();
+      if (!text || !llm) return;
+      
+      addMessage(text, 'user');
+      inputEl.value = '';
+      inputEl.disabled = true;
+      sendBtn.disabled = true;
+      
+      const response = await llm.generate(text);
+      
+      addMessage(response, 'bot');
+      inputEl.disabled = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
     }
 
-    // Função para inicializar o chat com WebLLM
-    async function initWebLLMChat() {
-      try {
-        updateStatus('Carregando módulo de IA...');
-        
-        // Importa o WebLLM diretamente como módulo ES
-        const { ChatModule } = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.1.12/+esm');
-        
-        chat = new ChatModule();
-        
-        // Configura o callback de progresso
-        chat.setInitProgressCallback((report) => {
-          updateStatus(report.text || 'Carregando modelo...');
-          const percent = Math.round(report.progress * 100);
-          progressBarEl.style.width = `${percent}%`;
-          progressTextEl.textContent = `Progresso: ${percent}% - ${report.text || ''}`;
-        });
-
-        // Carrega o modelo selecionado
-        updateStatus(`Carregando modelo ${currentModel}...`);
-        await chat.reload(currentModel);
-        
-        // Sucesso - mostra a interface do chat
-        loadingEl.style.display = 'none';
-        chatEl.style.display = 'block';
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
-        
-        addMessage('Olá! Eu sou a Beemote IA. Como posso te ajudar hoje?', 'bot');
-        
-      } catch (error) {
-        console.error('Erro ao carregar WebLLM:', error);
-        throw error;
-      }
-    }
-
-    // Função para inicializar a versão simulada
-    function initLiteVersion() {
-      console.log("Iniciando versão simulada...");
-      fallbackMode = true;
-      chat = new LocalChatModule();
-      
-      // Simula o carregamento do modelo
-      chat.setInitProgressCallback((report) => {
-        updateStatus(report.text || 'Carregando...');
-        const percent = Math.round(report.progress * 100);
-        progressBarEl.style.width = `${percent}%`;
-      });
-      
-      // Mostra que está carregando
-      updateStatus('Iniciando modo básico...');
-      progressBarEl.style.width = '0%';
-      
-      setTimeout(async () => {
-        await chat.reload('local-model');
-        
-        updateStatus('Modo básico pronto');
-        progressBarEl.style.width = '100%';
-        progressBarEl.style.background = 'var(--success)';
-        spinnerEl.style.display = 'none';
-        
-        loadingEl.style.display = 'none';
-        chatEl.style.display = 'block';
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
-        
-        addMessage('Você está usando a versão básica da Beemote IA. Algumas funcionalidades são limitadas.', 'bot');
-      }, 1500);
-    }
-
-    // Configura os event listeners
-    function setupEventListeners() {
-      console.log("Configurando event listeners...");
-      
-      sendBtn.addEventListener('click', async () => {
-        const text = inputEl.value.trim();
-        if (!text) return;
-        
-        addMessage(text, 'user');
-        inputEl.value = '';
-        inputEl.disabled = true;
-        sendBtn.disabled = true;
-        
-        try {
-          if (chat) {
-            const reply = await chat.generate(text);
-            addMessage(reply, 'bot');
-          } else {
-            addMessage('Desculpe, ocorreu um erro inesperado.', 'error');
-          }
-        } catch (error) {
-          console.error("Erro ao gerar resposta:", error);
-          addMessage('Ocorreu um erro ao processar sua mensagem.', 'error');
-        } finally {
-          inputEl.disabled = false;
-          sendBtn.disabled = false;
-          inputEl.focus();
-        }
-      });
-
-      // Enter key support
+    // Inicializa o chat
+    init().then(llm => {
+      sendBtn.addEventListener('click', () => sendMessage(llm));
       inputEl.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          sendBtn.click();
-        }
+        if (e.key === 'Enter') sendMessage(llm);
       });
-
-      retryBtn.addEventListener('click', async () => {
-        retryBtn.style.display = 'none';
-        liteBtn.style.display = 'none';
-        spinnerEl.style.display = 'block';
-        progressBarEl.style.background = 'var(--primary)';
-        progressBarEl.style.width = '0%';
-        await initApp();
-      });
-
-      liteBtn.addEventListener('click', initLiteVersion);
-    }
-
-    // Função principal de inicialização
-    async function initApp() {
-      try {
-        // Primeiro tenta carregar o WebLLM completo
-        await initWebLLMChat();
-      } catch (error) {
-        console.error('Falha ao carregar WebLLM:', error);
-        updateStatus('Erro ao carregar IA completa', true);
-        spinnerEl.style.display = 'none';
-        retryBtn.style.display = 'inline-block';
-        liteBtn.style.display = 'inline-block';
-      }
-    }
-
-    // Inicia a aplicação
-    console.log("Iniciando aplicação...");
-    try {
-      setupEventListeners();
-      initApp();
-    } catch (error) {
-      console.error("Erro fatal na inicialização:", error);
-      statusEl.textContent = "Erro crítico ao iniciar";
-      statusEl.style.color = "var(--error)";
-      spinnerEl.style.display = "none";
-      retryBtn.style.display = "inline-block";
-      liteBtn.style.display = "inline-block";
-    }
+    });
   </script>
 </body>
 </html>

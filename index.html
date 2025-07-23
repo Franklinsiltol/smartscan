@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v1.4 - IFRAME FULLSCREEN FIX --- */
+        /* --- PROJETO PHOENIX v1.5 - MODO BUSCA --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -23,7 +23,6 @@
             --phoenix-border: rgba(255, 255, 255, 0.1);
             --phoenix-text-primary: #C9D1D9;
             --phoenix-text-secondary: #8B949E;
-            --phoenix-white: #FFFFFF;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,7 +33,6 @@
         body::before { content: ""; position: absolute; top: 50%; left: 50%; width: 120vw; height: 120vh; min-width: 1400px; min-height: 1400px; background-image: var(--phoenix-bg-gradient); animation: aurora 20s linear infinite; z-index: 0; }
         .app-container { display: grid; grid-template-columns: 260px 1fr; width: 100%; height: 100%; position: relative; z-index: 1; }
 
-        /* --- Sidebar --- */
         .sidebar { background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
         .logo { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;}
         .logo-icon { width: 36px; height: 36px; border-radius: 8px; }
@@ -42,7 +40,7 @@
         .sidebar-section { display: flex; flex-direction: column; gap: 0.5rem; }
         .sidebar-title { font-size: 0.75rem; font-weight: 700; color: var(--phoenix-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0.75rem; margin-bottom: 0.25rem; }
         .sidebar-button { background: transparent; border: 1px solid transparent; color: var(--phoenix-text-secondary); padding: 0.75rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; transition: all 0.2s ease; width: 100%; text-align: left; }
-        .sidebar-button:hover { background: rgba(255,255,255,0.05); color: var(--phoenix-text-primary); }
+        .sidebar-button:hover, .sidebar-button.active { background: rgba(255,255,255,0.05); color: var(--phoenix-text-primary); }
         .sidebar-button svg { width: 20px; height: 20px; flex-shrink: 0; }
         .settings-toggle { color: var(--phoenix-text-secondary); font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: 8px; transition: all 0.2s ease; cursor: pointer; }
         .settings-toggle:hover { background: rgba(255,255,255,0.05); }
@@ -57,8 +55,7 @@
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
         #submitSuggestionBtn { background: var(--phoenix-primary); color: var(--phoenix-white); font-weight: 600; }
 
-        /* --- Chat Area --- */
-        .chat-view { display: flex; flex-direction: column; height: 100vh; background: transparent; }
+        .main-view { display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
         .menu-toggle { display: none; background: transparent; border: none; color: var(--phoenix-text-secondary); padding: 0; cursor: pointer; }
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--phoenix-text-secondary); }
@@ -66,6 +63,8 @@
         .status-dot.loading { background-color: #F7B731; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
+        /* Chat View */
+        .chat-view-content { height: 100%; display: flex; flex-direction: column; }
         .chat-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-area { flex-grow: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
         .chat-area::-webkit-scrollbar { width: 8px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.1); border-radius: 4px; }
@@ -74,47 +73,59 @@
         .user-message { background: var(--phoenix-primary); color: var(--phoenix-white); margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
         .bot-message { background: var(--phoenix-surface); border: 1px solid var(--phoenix-border); color: var(--phoenix-text-primary); margin-right: auto; border-bottom-left-radius: 4px; }
         .message a { color: var(--phoenix-primary); text-decoration: none; font-weight: 600; }
-        .message a:hover { text-decoration: underline; }
         .option-button { display: block; width: calc(100% + 2.5rem); margin: 0.75rem -1.25rem -1rem -1.25rem; padding: 0.75rem 1.25rem; background: transparent; border: none; border-top: 1px solid var(--phoenix-border); color: var(--phoenix-primary); font-size: 0.9rem; text-align: left; cursor: pointer; transition: background-color 0.2s; }
         .option-button:hover { background: rgba(51, 160, 255, 0.1); }
         .typing-indicator { display: flex; align-items: center; gap: 0.35rem; }
         .typing-dot { width: 8px; height: 8px; background-color: var(--phoenix-secondary); border-radius: 50%; opacity: 0.4; animation: typingAnimation 1.4s infinite ease-in-out; }
         .typing-dot:nth-child(1) { animation-delay: 0s; } .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes typingAnimation { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
-
         .input-area-wrapper { flex-shrink: 0; padding: 1.5rem; background: rgba(13, 17, 23, 0.5); border-top: 1px solid var(--phoenix-border); backdrop-filter: blur(12px); }
         .input-area { display: flex; align-items: center; gap: 1rem; }
         #questionInput { flex-grow: 1; padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); font-family: 'Inter', sans-serif; font-size: 1rem; outline: none; transition: all 0.2s; }
         #questionInput:focus { border-color: var(--phoenix-primary); box-shadow: 0 0 0 3px var(--phoenix-primary-glow); }
         #askButton { background: var(--phoenix-primary); color: var(--phoenix-white); border-radius: 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; border: none; }
-        #askButton:hover { filter: brightness(1.1); }
         .status-footer { padding-top: 1rem; font-size: 0.8rem; color: var(--phoenix-text-secondary); display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; }
         .status-footer svg { width: 14px; height: 14px; }
+        
+        /* Modo Busca (Knowledge Base) */
+        .kb-view { display: none; height: 100%; flex-direction: column; }
+        .kb-search-header { padding: 1.5rem; border-bottom: 1px solid var(--phoenix-border); }
+        #kbSearchInput { width: 100%; padding: 1rem 1.5rem; font-size: 1.1rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); outline: none; transition: all 0.2s; }
+        #kbSearchInput:focus { border-color: var(--phoenix-primary); box-shadow: 0 0 0 3px var(--phoenix-primary-glow); }
+        .kb-content { flex-grow: 1; display: grid; grid-template-columns: 1fr 2fr; overflow: hidden; }
+        .kb-questions { border-right: 1px solid var(--phoenix-border); overflow-y: auto; padding: 1rem 0; }
+        .kb-question-item { display: block; width: 100%; padding: 0.75rem 1.5rem; background: none; border: none; color: var(--phoenix-text-secondary); text-align: left; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; border-left: 3px solid transparent; }
+        .kb-question-item:hover { background: rgba(255,255,255,0.03); color: var(--phoenix-text-primary); }
+        .kb-question-item.selected { color: var(--phoenix-primary); font-weight: 600; border-left-color: var(--phoenix-primary); background: rgba(51, 160, 255, 0.1); }
+        .kb-answer { overflow-y: auto; padding: 2rem; }
+        .kb-answer-placeholder { color: var(--phoenix-text-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+        .kb-answer-placeholder svg { width: 48px; height: 48px; margin-bottom: 1rem; }
+        .kb-answer h2 { margin-bottom: 1rem; color: var(--phoenix-primary); }
+        .kb-answer p { line-height: 1.7; }
+        
+        /* View Toggling */
+        body.search-mode-active .chat-view-content { display: none; }
+        body.search-mode-active .kb-view { display: flex; }
+
         .mobile-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 9; opacity: 0; transition: opacity 0.3s ease; }
         .mobile-overlay.active { display: block; opacity: 1; }
 
-        /* --- Modals & Banners --- */
         #dashboardModal { display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(13, 17, 23, 0.6); backdrop-filter: blur(8px); justify-content: center; align-items: center; animation: fadeInModal 0.3s ease; }
         .dashboard-modal-content { width: 100%; height: 100%; background-color: var(--phoenix-bg); border-radius: 0; border: none; }
-        
-        /* --- CSS CORRIGIDO PARA O IFRAME --- */
-        .dashboard-modal-content iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
+        .dashboard-modal-content iframe { width: 100%; height: 100%; border: none; }
         #closeDashboardBtn { position: fixed; top: 20px; right: 20px; width: 48px; height: 48px; background-color: rgba(0,0,0,0.5); color: var(--phoenix-white); border: 1px solid var(--phoenix-border); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1001; transition: all 0.2s ease; backdrop-filter: blur(5px); }
         #closeDashboardBtn:hover { transform: scale(1.1); background-color: rgba(0,0,0,0.8); }
-        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
         .notification-banner { background-color: var(--phoenix-surface); border-left: 4px solid var(--phoenix-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 8px; animation: slideIn 0.3s ease-out; font-size: 0.9rem; }
-
+        
         @media (max-width: 768px) {
             .app-container { grid-template-columns: 1fr; }
             .sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 10; transform: translateX(-100%); width: 280px; }
             .sidebar.sidebar-open { transform: translateX(0); }
             .menu-toggle { display: flex; }
             .chat-area, .input-area-wrapper { padding: 1rem; }
+            .kb-content { grid-template-columns: 1fr; }
+            .kb-questions { border-right: none; border-bottom: 1px solid var(--phoenix-border); max-height: 40vh; }
+            .kb-answer { padding: 1.5rem; }
         }
     </style>
 </head>
@@ -128,9 +139,13 @@
             </div>
             
             <div class="sidebar-section">
-                <div class="sidebar-title">Navegação</div>
+                <div class="sidebar-title">Visualização</div>
+                <button id="viewToggleBtn" class="sidebar-button" title="Alternar Visualização">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                    <span id="viewToggleText">Modo Busca</span>
+                </button>
                 <button id="dashboardButton" class="sidebar-button" title="Abrir Dashboard de Links">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3,3h8v8H3V3z M13,3h8v8h-8V3z M3,13h8v8H3V13z M13,13h8v8h-8V13z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M13 13v8h8v-8h-8zM3 21h8v-8H3v8zM3 3v8h8V3H3zm13-1v10h-2V3h-2v10h-2V3h-2v10h-2V3H7v10H5V3H3v18h18V3h-2z"/></svg>
                     <span>Dashboard</span>
                 </button>
                  <div class="settings-toggle">
@@ -166,7 +181,7 @@
         
         <div class="mobile-overlay" id="mobileOverlay"></div>
 
-        <main class="chat-view">
+        <main class="main-view">
             <header>
                 <button class="menu-toggle" id="menuToggle" title="Abrir Menu">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -176,15 +191,33 @@
                     <span id="statusText">Conectando...</span>
                 </div>
             </header>
-            <div class="chat-container">
-                <div class="chat-area" id="chatArea"></div>
-            </div>
-            <div class="input-area-wrapper">
-                <div class="input-area">
-                    <input type="text" id="questionInput" placeholder="Digite sua mensagem..." autocomplete="off">
-                    <button id="askButton" title="Enviar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+
+            <div class="chat-view-content">
+                <div class="chat-container">
+                    <div class="chat-area" id="chatArea"></div>
                 </div>
-                 <div id="autoUpdateStatus" class="status-footer"></div>
+                <div class="input-area-wrapper">
+                    <div class="input-area">
+                        <input type="text" id="questionInput" placeholder="Digite sua mensagem..." autocomplete="off">
+                        <button id="askButton" title="Enviar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    </div>
+                    <div id="autoUpdateStatus" class="status-footer"></div>
+                </div>
+            </div>
+
+            <div class="kb-view">
+                <div class="kb-search-header">
+                    <input type="text" id="kbSearchInput" placeholder="Buscar na base de conhecimento...">
+                </div>
+                <div class="kb-content">
+                    <div id="kbQuestionList" class="kb-questions"></div>
+                    <div id="kbAnswerArea" class="kb-answer">
+                         <div class="kb-answer-placeholder">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                            Selecione uma pergunta na lista para ver a resposta aqui.
+                         </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -220,9 +253,14 @@
                     suggestionForm: document.getElementById('suggestionForm'),
                     suggestionTextarea: document.getElementById('suggestionTextarea'),
                     submitSuggestionBtn: document.getElementById('submitSuggestionBtn'),
-                    commandButtons: document.querySelectorAll('.command-button')
+                    commandButtons: document.querySelectorAll('.command-button'),
+                    viewToggleBtn: document.getElementById('viewToggleBtn'),
+                    viewToggleText: document.getElementById('viewToggleText'),
+                    kbSearchInput: document.getElementById('kbSearchInput'),
+                    kbQuestionList: document.getElementById('kbQuestionList'),
+                    kbAnswerArea: document.getElementById('kbAnswerArea'),
                 };
-                this.state = { db: null, fuse: null, qaData: [], lastUpdateHash: "", autoUpdateIntervalId: null, notificationIntervalId: null, lastNotification: null, useModel: null, isModelLoaded: false, isModelLoading: false, isAdvancedMode: false, conversationHistory: [], lastUnansweredQuestion: null, isAwaitingSuggestion: false };
+                this.state = { db: null, fuse: null, qaData: [], lastUpdateHash: "", autoUpdateIntervalId: null, notificationIntervalId: null, lastNotification: null, useModel: null, isModelLoaded: false, isModelLoading: false, isAdvancedMode: false, isSearchMode: false, conversationHistory: [], lastUnansweredQuestion: null };
                 this._init();
             }
             
@@ -239,6 +277,37 @@
                 this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
                 this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
                 this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
+                this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
+                this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
+                this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected');} });
+            }
+
+            _toggleSearchMode() {
+                this.state.isSearchMode = !this.state.isSearchMode;
+                document.body.classList.toggle('search-mode-active');
+                if (this.state.isSearchMode) {
+                    this.elements.viewToggleText.textContent = "Voltar ao Chat";
+                    this.elements.viewToggleBtn.classList.add('active');
+                    this._populateKbList();
+                } else {
+                    this.elements.viewToggleText.textContent = "Modo Busca";
+                    this.elements.viewToggleBtn.classList.remove('active');
+                }
+            }
+            
+            _populateKbList(filter = '') {
+                const lowerFilter = filter.toLowerCase();
+                const filteredData = this.state.qaData.filter(item => item.question.toLowerCase().includes(lowerFilter));
+                this.elements.kbQuestionList.innerHTML = filteredData.map((item, index) => 
+                    `<button class="kb-question-item" data-index="${this.state.qaData.indexOf(item)}">${item.question}</button>`
+                ).join('');
+            }
+
+            _displayKbAnswer(index) {
+                if (index < 0 || index >= this.state.qaData.length) return;
+                const item = this.state.qaData[index];
+                const formattedAnswer = this._createHyperlinks(item.answer).replace(/\n/g, '<br>');
+                this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`;
             }
 
             _addMessage(text,sender,options=[]){const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChrunAssist - Phoenix</title>
+    <title>ChurnAssist - Phoenix</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1-H-um4lnsC7fmbqtHNgX38eK8270SYOE">
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0"></script>
@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v1.5 - MODO BUSCA --- */
+        /* --- PROJETO PHOENIX v1.7 - FINAL FIX --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -63,14 +63,13 @@
         .status-dot.loading { background-color: #F7B731; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
-        /* Chat View */
         .chat-view-content { height: 100%; display: flex; flex-direction: column; }
         .chat-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-area { flex-grow: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
         .chat-area::-webkit-scrollbar { width: 8px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.1); border-radius: 4px; }
         .message { max-width: 70%; padding: 1rem 1.25rem; border-radius: 16px; line-height: 1.6; position: relative; animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); word-wrap: break-word; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .user-message { background: var(--phoenix-primary); color: var(--phoenix-white); margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
+        .user-message { background: var(--phoenix-primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
         .bot-message { background: var(--phoenix-surface); border: 1px solid var(--phoenix-border); color: var(--phoenix-text-primary); margin-right: auto; border-bottom-left-radius: 4px; }
         .message a { color: var(--phoenix-primary); text-decoration: none; font-weight: 600; }
         .option-button { display: block; width: calc(100% + 2.5rem); margin: 0.75rem -1.25rem -1rem -1.25rem; padding: 0.75rem 1.25rem; background: transparent; border: none; border-top: 1px solid var(--phoenix-border); color: var(--phoenix-primary); font-size: 0.9rem; text-align: left; cursor: pointer; transition: background-color 0.2s; }
@@ -83,11 +82,10 @@
         .input-area { display: flex; align-items: center; gap: 1rem; }
         #questionInput { flex-grow: 1; padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); font-family: 'Inter', sans-serif; font-size: 1rem; outline: none; transition: all 0.2s; }
         #questionInput:focus { border-color: var(--phoenix-primary); box-shadow: 0 0 0 3px var(--phoenix-primary-glow); }
-        #askButton { background: var(--phoenix-primary); color: var(--phoenix-white); border-radius: 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; border: none; }
+        #askButton { background: var(--phoenix-primary); color: #fff; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; border: none; }
         .status-footer { padding-top: 1rem; font-size: 0.8rem; color: var(--phoenix-text-secondary); display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; }
         .status-footer svg { width: 14px; height: 14px; }
         
-        /* Modo Busca (Knowledge Base) */
         .kb-view { display: none; height: 100%; flex-direction: column; }
         .kb-search-header { padding: 1.5rem; border-bottom: 1px solid var(--phoenix-border); }
         #kbSearchInput { width: 100%; padding: 1rem 1.5rem; font-size: 1.1rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); outline: none; transition: all 0.2s; }
@@ -103,7 +101,6 @@
         .kb-answer h2 { margin-bottom: 1rem; color: var(--phoenix-primary); }
         .kb-answer p { line-height: 1.7; }
         
-        /* View Toggling */
         body.search-mode-active .chat-view-content { display: none; }
         body.search-mode-active .kb-view { display: flex; }
 
@@ -113,8 +110,31 @@
         #dashboardModal { display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(13, 17, 23, 0.6); backdrop-filter: blur(8px); justify-content: center; align-items: center; animation: fadeInModal 0.3s ease; }
         .dashboard-modal-content { width: 100%; height: 100%; background-color: var(--phoenix-bg); border-radius: 0; border: none; }
         .dashboard-modal-content iframe { width: 100%; height: 100%; border: none; }
-        #closeDashboardBtn { position: fixed; top: 20px; right: 20px; width: 48px; height: 48px; background-color: rgba(0,0,0,0.5); color: var(--phoenix-white); border: 1px solid var(--phoenix-border); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1001; transition: all 0.2s ease; backdrop-filter: blur(5px); }
-        #closeDashboardBtn:hover { transform: scale(1.1); background-color: rgba(0,0,0,0.8); }
+        
+        /* --- CSS CORRIGIDO PARA O BOTÃO --- */
+        #closeDashboardBtn {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%); /* Centraliza horizontalmente */
+            width: 48px; height: 48px;
+            background-color: rgba(0,0,0,0.5);
+            color: #fff;
+            border: 1px solid var(--phoenix-border);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+        }
+        #closeDashboardBtn:hover {
+            transform: translateX(-50%) scale(1.1); /* Mantém centralizado no hover */
+            background-color: rgba(0,0,0,0.8);
+        }
+        
         .notification-banner { background-color: var(--phoenix-surface); border-left: 4px solid var(--phoenix-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 8px; animation: slideIn 0.3s ease-out; font-size: 0.9rem; }
         
         @media (max-width: 768px) {
@@ -135,7 +155,7 @@
         <aside class="sidebar" id="sidebar">
             <div class="logo">
                 <img src="https://lh3.googleusercontent.com/d/1tG7oc1T5Xd3f1vZ267xPCX9k2SVrfNz1" alt="Logo" class="logo-icon">
-                <div class="logo-text">ChrunAssist</div>
+                <div class="logo-text">ChurnAssist</div>
             </div>
             
             <div class="sidebar-section">
@@ -232,9 +252,9 @@
     </div>
 
     <script>
-        class ChrunAssist {
+        class ChurnAssist {
             constructor() {
-                this.config = { SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", SHEET_NAME: "Retenção", NOTIFICATION_SHEET: "Notificações", AUTO_UPDATE_INTERVAL: 600000, DB_NAME: "ChrunAssistDB", STORE_NAME: "KnowledgeBase", DATA_KEY: "qaData", LAST_UPDATE_KEY: "lastUpdate", MODEL_KEY: "useModel", SIMILARITY_THRESHOLD: 0.7, FUSE_THRESHOLD: 0.35, NOTIFICATION_CHECK_INTERVAL: 300000, VAGUE_PHRASES: ['como funciona', 'o que é', 'qual o processo', 'qual o procedimento', 'como fazer para']};
+                this.config = { SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", SHEET_NAME: "Retenção", NOTIFICATION_SHEET: "Notificações", AUTO_UPDATE_INTERVAL: 600000, DB_NAME: "ChurnAssistDB", STORE_NAME: "KnowledgeBase", DATA_KEY: "qaData", LAST_UPDATE_KEY: "lastUpdate", MODEL_KEY: "useModel", SIMILARITY_THRESHOLD: 0.7, FUSE_THRESHOLD: 0.35, NOTIFICATION_CHECK_INTERVAL: 300000, VAGUE_PHRASES: ['como funciona', 'o que é', 'qual o processo', 'qual o procedimento', 'como fazer para']};
                 this.elements = { 
                     questionInput: document.getElementById('questionInput'), 
                     askButton: document.getElementById('askButton'), 
@@ -322,7 +342,7 @@
             async _fetchAndUpdateData(isManual = false) { try { const result = await this._fetchSheetData(); if (result && result.updated) { this.state.qaData = result.data; this.state.lastUpdateHash = result.hash; await this._saveToDatabase(result.data, result.hash); this._initSearchEngine(); this._updateStatus(`Pronto`, 'success'); this._updateFooterStatus(`Base atualizada às ${new Date().toLocaleTimeString()}`, 'success'); if (this.elements.chatArea.children.length > 1 || isManual) { this._addBotMessage(`Base de conhecimento atualizada! Agora tenho ${result.data.length} respostas.`); } } } catch (error) { this._addBotMessage("Ocorreu um erro durante a atualização."); } }
             _startAutoUpdate() { if (this.state.autoUpdateIntervalId) clearInterval(this.state.autoUpdateIntervalId); this.state.autoUpdateIntervalId = setInterval(async () => { try { await this._fetchSheetData(); } catch (error) { console.error("Erro na verificação automática:", error); this._updateFooterStatus(`Erro na verificação (${new Date().toLocaleTimeString()})`, 'error'); } }, this.config.AUTO_UPDATE_INTERVAL); this._updateFooterStatus(`Verificação a cada ${this.config.AUTO_UPDATE_INTERVAL / 60000} min.`, 'info'); }
             async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 3); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
-            async _loadInitialData() { try { const { data, hash } = await this._loadFromDatabase(); if (data && data.length > 0) { this.state.qaData = data; this.state.lastUpdateHash = hash; this._initSearchEngine(); this._updateStatus(`Pronto`); this._addBotMessage("Olá! Sou o ChrunAssist. Como posso ajudar?"); } else { await this._fetchAndUpdateData(); } } catch (error) { console.error("Erro ao carregar dados iniciais:", error); this._updateStatus("Erro ao carregar", 'error'); await this._fetchAndUpdateData(); } }
+            async _loadInitialData() { try { const { data, hash } = await this._loadFromDatabase(); if (data && data.length > 0) { this.state.qaData = data; this.state.lastUpdateHash = hash; this._initSearchEngine(); this._updateStatus(`Pronto`); this._addBotMessage("Olá! Sou o ChurnAssist. Como posso ajudar?"); } else { await this._fetchAndUpdateData(); } } catch (error) { console.error("Erro ao carregar dados iniciais:", error); this._updateStatus("Erro ao carregar", 'error'); await this._fetchAndUpdateData(); } }
             _initSearchEngine() { this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4, ignoreLocation: true, minMatchCharLength: 2 }); }
             _processQuery(text) { if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, ''); let doc = nlp(text); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
             async _handleQuestion() { const question = this.elements.questionInput.value.trim(); const questionLower = question.toLowerCase(); if (!question) return; if (this.state.isAwaitingSuggestion) { this._addUserMessage(question); this._submitQuestionToForm(question, true); this.state.isAwaitingSuggestion = false; this.elements.questionInput.placeholder = "Digite sua mensagem..."; this.elements.questionInput.value = ''; return; } this._addUserMessage(question); this.elements.questionInput.value = ''; if (question.startsWith('/')) { this._handleCommand(question); return; } this._showTypingIndicator(); const isVague = this.config.VAGUE_PHRASES.includes(questionLower); if (isVague) { const suggestions = this.state.qaData.filter(item => item.question.toLowerCase().startsWith(questionLower)).map(item => ({ item })); if (suggestions.length > 0) { this._addBotMessage(`Isso é um pouco vago. Você quis dizer alguma destas opções?`, suggestions.slice(0, 4)); } else { this._addBotMessage(`Sua pergunta é muito genérica. Por favor, tente ser mais específico (ex: "${question} o cartão?").`); } return; } setTimeout(async () => { try { let answerText = null; let answerOptions = []; const processedQuery = this._processQuery(question); if (processedQuery.split(' ').length < 2 && question.length < 5) { answerText = "Sua pergunta é muito curta. Por favor, tente ser mais específico."; this._addBotMessage(answerText, answerOptions); return; } if (this.state.isAdvancedMode && this.state.isModelLoaded) { const embeddingMatch = await this._findBestMatchWithEmbedding(question); if (embeddingMatch) { answerText = embeddingMatch.item.answer; } } if (!answerText) { if (!this.state.fuse) { answerText = "A base de conhecimento não está pronta."; } else { const results = this.state.fuse.search(processedQuery); if (results.length > 0 && results[0].score < this.config.FUSE_THRESHOLD) { answerText = results[0].item.answer; } else if (results.length > 0) { answerText = "Não tenho certeza, mas talvez uma destas opções ajude:"; answerOptions = results.slice(0, 3); } else { this.state.lastUnansweredQuestion = question; answerText = "Desculpe, não encontrei uma resposta."; } } } this._addBotMessage(answerText, answerOptions); } catch (error) { console.error("Erro ao processar pergunta:", error); this._addBotMessage("Ocorreu um erro ao processar sua pergunta."); } }, 800); }
@@ -342,7 +362,7 @@
             _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
             _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
         }
-        document.addEventListener('DOMContentLoaded', () => { window.ChrunAssist = new ChrunAssist(); });
+        document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });
     </script>
 </body>
 </html>

@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v1.7 - FINAL FIX --- */
+        /* --- PROJETO PHOENIX v1.9 - SUBMIT QUESTION FINAL FIX --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -23,6 +23,7 @@
             --phoenix-border: rgba(255, 255, 255, 0.1);
             --phoenix-text-primary: #C9D1D9;
             --phoenix-text-secondary: #8B949E;
+            --phoenix-green: #238636;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -53,13 +54,13 @@
         #suggestionForm { display: none; flex-direction: column; gap: 0.75rem; padding-top: 0.5rem; }
         #suggestionForm.active { display: flex; }
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
-        #submitSuggestionBtn { background: var(--phoenix-primary); color: var(--phoenix-white); font-weight: 600; }
+        #submitSuggestionBtn { background: var(--phoenix-primary); color: #fff; font-weight: 600; }
 
         .main-view { display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
         .menu-toggle { display: none; background: transparent; border: none; color: var(--phoenix-text-secondary); padding: 0; cursor: pointer; }
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--phoenix-text-secondary); }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: #238636; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: var(--phoenix-green); }
         .status-dot.loading { background-color: #F7B731; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
@@ -78,6 +79,13 @@
         .typing-dot { width: 8px; height: 8px; background-color: var(--phoenix-secondary); border-radius: 50%; opacity: 0.4; animation: typingAnimation 1.4s infinite ease-in-out; }
         .typing-dot:nth-child(1) { animation-delay: 0s; } .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes typingAnimation { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
+        
+        .action-buttons { margin-top: 1rem; display: flex; gap: 0.75rem; }
+        .action-button { display: inline-block; padding: 0.5rem 1rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.9rem; text-align: center; cursor: pointer; transition: all 0.2s; border: none; font-weight: 600; }
+        .action-button.yes { background-color: var(--phoenix-green); color: #fff; }
+        .action-button.no { background-color: var(--phoenix-surface); color: var(--phoenix-text-secondary); border: 1px solid var(--phoenix-border); }
+        .action-button:hover { opacity: 0.9; transform: translateY(-1px); }
+
         .input-area-wrapper { flex-shrink: 0; padding: 1.5rem; background: rgba(13, 17, 23, 0.5); border-top: 1px solid var(--phoenix-border); backdrop-filter: blur(12px); }
         .input-area { display: flex; align-items: center; gap: 1rem; }
         #questionInput { flex-grow: 1; padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); font-family: 'Inter', sans-serif; font-size: 1rem; outline: none; transition: all 0.2s; }
@@ -110,31 +118,8 @@
         #dashboardModal { display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(13, 17, 23, 0.6); backdrop-filter: blur(8px); justify-content: center; align-items: center; animation: fadeInModal 0.3s ease; }
         .dashboard-modal-content { width: 100%; height: 100%; background-color: var(--phoenix-bg); border-radius: 0; border: none; }
         .dashboard-modal-content iframe { width: 100%; height: 100%; border: none; }
-        
-        /* --- CSS CORRIGIDO PARA O BOTÃO --- */
-        #closeDashboardBtn {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%); /* Centraliza horizontalmente */
-            width: 48px; height: 48px;
-            background-color: rgba(0,0,0,0.5);
-            color: #fff;
-            border: 1px solid var(--phoenix-border);
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1001;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(5px);
-        }
-        #closeDashboardBtn:hover {
-            transform: translateX(-50%) scale(1.1); /* Mantém centralizado no hover */
-            background-color: rgba(0,0,0,0.8);
-        }
-        
+        #closeDashboardBtn { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 48px; height: 48px; background-color: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--phoenix-border); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1001; transition: all 0.2s ease; backdrop-filter: blur(5px); }
+        #closeDashboardBtn:hover { transform: translateX(-50%) scale(1.1); background-color: rgba(0,0,0,0.8); }
         .notification-banner { background-color: var(--phoenix-surface); border-left: 4px solid var(--phoenix-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 8px; animation: slideIn 0.3s ease-out; font-size: 0.9rem; }
         
         @media (max-width: 768px) {
@@ -333,6 +318,59 @@
             _addMessage(text,sender,options=[]){const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
             _showTypingIndicator(){this._removeTypingIndicator();const typingDiv=document.createElement('div');typingDiv.id='typingIndicator';typingDiv.className='message bot-message';typingDiv.innerHTML='<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';this.elements.chatArea.appendChild(typingDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
 
+            async _handleQuestion() {
+                const question = this.elements.questionInput.value.trim();
+                if (!question) return;
+
+                if (question.startsWith('/')) { this._handleCommand(question); this.elements.questionInput.value = ''; return; }
+                this._addUserMessage(question);
+                this.elements.questionInput.value = '';
+
+                this._showTypingIndicator();
+                setTimeout(async () => {
+                    try {
+                        let answerText = null; let answerOptions = [];
+                        const processedQuery = this._processQuery(question);
+
+                        if (!this.state.fuse) { answerText = "A base de conhecimento não está pronta."; }
+                        else {
+                            const results = this.state.fuse.search(processedQuery);
+                            if (results.length > 0 && results[0].score < this.config.FUSE_THRESHOLD) {
+                                answerText = results[0].item.answer;
+                            } else if (results.length > 0) {
+                                answerText = "Não tenho certeza, mas talvez uma destas opções ajude:";
+                                answerOptions = results.slice(0, 3);
+                            } else {
+                                this.state.lastUnansweredQuestion = question;
+                                answerText = "Desculpe, não encontrei uma resposta. Gostaria de adicionar esta pergunta à nossa base de conhecimento?";
+                            }
+                        }
+                        this._addBotMessage(answerText, answerOptions);
+                        if (answerText.includes("Gostaria de adicionar esta pergunta")) {
+                            this._showAddQuestionButtons();
+                        }
+                    } catch (error) { console.error("Erro ao processar pergunta:", error); this._addBotMessage("Ocorreu um erro ao processar sua pergunta."); }
+                }, 800);
+            }
+
+            _showAddQuestionButtons() {
+                const messageDiv = this.elements.chatArea.querySelector('.message:last-child');
+                if (!messageDiv) return;
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'action-buttons';
+                const yesButton = document.createElement('button');
+                yesButton.className = 'action-button yes';
+                yesButton.textContent = 'Sim, sugerir';
+                yesButton.onclick = () => { this._submitQuestionToForm(this.state.lastUnansweredQuestion); buttonsContainer.innerHTML = `<p style="font-size: 0.85em; color: var(--phoenix-text-secondary);">Obrigado pela contribuição!</p>`; };
+                const noButton = document.createElement('button');
+                noButton.className = 'action-button no';
+                noButton.textContent = 'Não';
+                noButton.onclick = () => { buttonsContainer.remove(); };
+                buttonsContainer.appendChild(yesButton);
+                buttonsContainer.appendChild(noButton);
+                messageDiv.appendChild(buttonsContainer);
+            }
+
             _startNotificationCheck() { if (this.state.notificationIntervalId) clearInterval(this.state.notificationIntervalId); this.state.notificationIntervalId = setInterval(() => this._checkForNotifications(), this.config.NOTIFICATION_CHECK_INTERVAL); this._checkForNotifications(); }
             _checkAndDisplayPersistentNotification() { const storedText = localStorage.getItem('neuroAssistNotificationText'); const storedTimestamp = localStorage.getItem('neuroAssistNotificationTimestamp'); const twentyFourHours = 86400000; if (storedText && storedTimestamp) { const age = Date.now() - parseInt(storedTimestamp, 10); if (age < twentyFourHours) { this._showNotification(storedText); this.state.lastNotification = storedText; } else { localStorage.removeItem('neuroAssistNotificationText'); localStorage.removeItem('neuroAssistNotificationTimestamp'); } } }
             async _checkForNotifications() { try { const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET)}&range=A1&t=${Date.now()}`; const response = await fetch(url); if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`); const csvText = await response.text(); const notificationText = this._parseCSV(csvText)[0][0]?.trim(); if (notificationText && notificationText !== this.state.lastNotification) { localStorage.setItem('neuroAssistNotificationText', notificationText); localStorage.setItem('neuroAssistNotificationTimestamp', Date.now().toString()); this._showNotification(notificationText); this.state.lastNotification = notificationText; } } catch (error) { console.error("Erro ao verificar notificações:", error); } }
@@ -345,10 +383,8 @@
             async _loadInitialData() { try { const { data, hash } = await this._loadFromDatabase(); if (data && data.length > 0) { this.state.qaData = data; this.state.lastUpdateHash = hash; this._initSearchEngine(); this._updateStatus(`Pronto`); this._addBotMessage("Olá! Sou o ChurnAssist. Como posso ajudar?"); } else { await this._fetchAndUpdateData(); } } catch (error) { console.error("Erro ao carregar dados iniciais:", error); this._updateStatus("Erro ao carregar", 'error'); await this._fetchAndUpdateData(); } }
             _initSearchEngine() { this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4, ignoreLocation: true, minMatchCharLength: 2 }); }
             _processQuery(text) { if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, ''); let doc = nlp(text); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
-            async _handleQuestion() { const question = this.elements.questionInput.value.trim(); const questionLower = question.toLowerCase(); if (!question) return; if (this.state.isAwaitingSuggestion) { this._addUserMessage(question); this._submitQuestionToForm(question, true); this.state.isAwaitingSuggestion = false; this.elements.questionInput.placeholder = "Digite sua mensagem..."; this.elements.questionInput.value = ''; return; } this._addUserMessage(question); this.elements.questionInput.value = ''; if (question.startsWith('/')) { this._handleCommand(question); return; } this._showTypingIndicator(); const isVague = this.config.VAGUE_PHRASES.includes(questionLower); if (isVague) { const suggestions = this.state.qaData.filter(item => item.question.toLowerCase().startsWith(questionLower)).map(item => ({ item })); if (suggestions.length > 0) { this._addBotMessage(`Isso é um pouco vago. Você quis dizer alguma destas opções?`, suggestions.slice(0, 4)); } else { this._addBotMessage(`Sua pergunta é muito genérica. Por favor, tente ser mais específico (ex: "${question} o cartão?").`); } return; } setTimeout(async () => { try { let answerText = null; let answerOptions = []; const processedQuery = this._processQuery(question); if (processedQuery.split(' ').length < 2 && question.length < 5) { answerText = "Sua pergunta é muito curta. Por favor, tente ser mais específico."; this._addBotMessage(answerText, answerOptions); return; } if (this.state.isAdvancedMode && this.state.isModelLoaded) { const embeddingMatch = await this._findBestMatchWithEmbedding(question); if (embeddingMatch) { answerText = embeddingMatch.item.answer; } } if (!answerText) { if (!this.state.fuse) { answerText = "A base de conhecimento não está pronta."; } else { const results = this.state.fuse.search(processedQuery); if (results.length > 0 && results[0].score < this.config.FUSE_THRESHOLD) { answerText = results[0].item.answer; } else if (results.length > 0) { answerText = "Não tenho certeza, mas talvez uma destas opções ajude:"; answerOptions = results.slice(0, 3); } else { this.state.lastUnansweredQuestion = question; answerText = "Desculpe, não encontrei uma resposta."; } } } this._addBotMessage(answerText, answerOptions); } catch (error) { console.error("Erro ao processar pergunta:", error); this._addBotMessage("Ocorreu um erro ao processar sua pergunta."); } }, 800); }
             async _submitQuestionToForm(question,fromCommand=false){if(!question)return;const formUrl='https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse';const formData=new FormData();formData.append('entry.2126538361',question);try{await fetch(formUrl,{method:'POST',mode:'no-cors',body:formData});let confirmationMessage=fromCommand?"Obrigado! Sua sugestão foi enviada para análise.":"Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe.";this._addBotMessage(confirmationMessage);}catch(error){console.error("Erro ao enviar pergunta:",error);this._addBotMessage("Houve um erro ao enviar sua pergunta.");} this.state.lastUnansweredQuestion=null;}
-            async _findBestMatchWithEmbedding(question){if(!this.state.isModelLoaded||!this.state.useModel)return null;try{const embeddings=await this.state.useModel.embed([question,...this.state.qaData.map(item=>item.question)]);const questionEmbedding=embeddings.slice(0,1);const answerEmbeddings=embeddings.slice(1);const scores=await tf.matMul(questionEmbedding,answerEmbeddings,false,true).data();let bestScore=-1,bestIndex=-1;scores.forEach((score,i)=>{if(score>bestScore){bestScore=score;bestIndex=i;}});return bestScore>this.config.SIMILARITY_THRESHOLD?{item:this.state.qaData[bestIndex],score:bestScore}:null;}catch(error){console.error("Erro ao usar embeddings:",error);return null;}}
-            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/ajuda':this._addBotMessage("Comandos disponíveis:\n`/ajuda`\n`/limpar`\n`/atualizar`\n`/debug`\n`/add` ou `/sugerir`");break;case'/limpar':this.elements.chatArea.innerHTML='';this._checkAndDisplayPersistentNotification();this._addBotMessage("Chat limpo!");break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData(true);break;case'/add':case'/sugerir':this.state.isAwaitingSuggestion=true;this._addBotMessage("Qual pergunta você gostaria de adicionar?");this.elements.questionInput.placeholder="Digite aqui a pergunta para sugerir...";this.elements.questionInput.focus();break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido. Digite /ajuda.`);}}
+            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/ajuda':this._addBotMessage("Comandos disponíveis:\n`/limpar`\n`/atualizar`");break;case'/limpar':this.elements.chatArea.innerHTML='';this._checkAndDisplayPersistentNotification();this._addBotMessage("Chat limpo!");break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData(true);break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido. Digite /ajuda.`);}}
             _addUserMessage(text){this._addMessage(text,'user');}
             _addBotMessage(text,options=[]){this._removeTypingIndicator();this._addMessage(text,'bot',options);}
             _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}

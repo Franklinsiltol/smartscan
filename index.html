@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.1 - SIDEBAR OVERLAY UNIVERSAL --- */
+        /* --- PROJETO PHOENIX v2.2 - SCROLLBARS PERSONALIZADAS --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -35,22 +35,7 @@
         
         .app-container { display: flex; width: 100%; height: 100%; position: relative; z-index: 1; }
 
-        .sidebar {
-            position: fixed;
-            left: 0; top: 0; height: 100%;
-            width: 260px;
-            z-index: 11;
-            transform: translateX(-100%);
-            background: var(--phoenix-sidebar);
-            border-right: 1px solid var(--phoenix-border);
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-            backdrop-filter: blur(12px);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow-y: auto;
-        }
+        .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: 260px; z-index: 11; transform: translateX(-100%); background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
         .sidebar.sidebar-open { transform: translateX(0); }
         .logo { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;}
         .logo-icon { width: 36px; height: 36px; border-radius: 8px; }
@@ -84,7 +69,6 @@
         .chat-view-content { height: 100%; display: flex; flex-direction: column; }
         .chat-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-area { flex-grow: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
-        .chat-area::-webkit-scrollbar { width: 8px; } .chat-area::-webkit-scrollbar-track { background: transparent; } .chat-area::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.1); border-radius: 4px; }
         .message { max-width: 70%; padding: 1rem 1.25rem; border-radius: 16px; line-height: 1.6; position: relative; animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); word-wrap: break-word; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .user-message { background: var(--phoenix-primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
@@ -139,6 +123,37 @@
         #closeDashboardBtn:hover { transform: translateX(-50%) scale(1.1); background-color: rgba(0,0,0,0.8); }
         .notification-banner { background-color: var(--phoenix-surface); border-left: 4px solid var(--phoenix-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 8px; animation: slideIn 0.3s ease-out; font-size: 0.9rem; }
         
+        /* --- SCROLLBARS PERSONALIZADAS --- */
+        .sidebar::-webkit-scrollbar,
+        .chat-area::-webkit-scrollbar,
+        .kb-questions::-webkit-scrollbar,
+        .kb-answer::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .sidebar::-webkit-scrollbar-track,
+        .chat-area::-webkit-scrollbar-track,
+        .kb-questions::-webkit-scrollbar-track,
+        .kb-answer::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb,
+        .chat-area::-webkit-scrollbar-thumb,
+        .kb-questions::-webkit-scrollbar-thumb,
+        .kb-answer::-webkit-scrollbar-thumb {
+            background-color: var(--phoenix-border);
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            transition: background-color 0.2s ease;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .chat-area::-webkit-scrollbar-thumb:hover,
+        .kb-questions::-webkit-scrollbar-thumb:hover,
+        .kb-answer::-webkit-scrollbar-thumb:hover {
+            background-color: var(--phoenix-text-secondary);
+        }
+
         @media (max-width: 768px) {
             .kb-content { grid-template-columns: 1fr; }
             .kb-questions { border-right: none; border-bottom: 1px solid var(--phoenix-border); max-height: 40vh; }

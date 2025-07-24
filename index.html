@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v1.9 - SUBMIT QUESTION FINAL FIX --- */
+        /* --- PROJETO PHOENIX v2.0 - SIDEBAR COLAPSÁVEL --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -32,9 +32,11 @@
         
         body { font-family: 'Inter', sans-serif; background-color: var(--phoenix-bg); color: var(--phoenix-text-primary); line-height: 1.6; height: 100vh; width: 100vw; overflow: hidden; position: relative; }
         body::before { content: ""; position: absolute; top: 50%; left: 50%; width: 120vw; height: 120vh; min-width: 1400px; min-height: 1400px; background-image: var(--phoenix-bg-gradient); animation: aurora 20s linear infinite; z-index: 0; }
-        .app-container { display: grid; grid-template-columns: 260px 1fr; width: 100%; height: 100%; position: relative; z-index: 1; }
+        
+        .app-container { display: grid; grid-template-columns: 260px 1fr; width: 100%; height: 100%; position: relative; z-index: 1; transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .app-container.sidebar-collapsed { grid-template-columns: 0 1fr; }
 
-        .sidebar { background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
+        .sidebar { background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; overflow-x: hidden; }
         .logo { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;}
         .logo-icon { width: 36px; height: 36px; border-radius: 8px; }
         .logo-text { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
@@ -58,7 +60,7 @@
 
         .main-view { display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
-        .menu-toggle { display: none; background: transparent; border: none; color: var(--phoenix-text-secondary); padding: 0; cursor: pointer; }
+        .menu-toggle { display: flex; background: transparent; border: none; color: var(--phoenix-text-secondary); padding: 0; cursor: pointer; }
         .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--phoenix-text-secondary); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: var(--phoenix-green); }
         .status-dot.loading { background-color: #F7B731; animation: pulse 1.5s infinite; }
@@ -113,7 +115,7 @@
         body.search-mode-active .kb-view { display: flex; }
 
         .mobile-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 9; opacity: 0; transition: opacity 0.3s ease; }
-        .mobile-overlay.active { display: block; opacity: 1; }
+        .app-container.sidebar-mobile-open .mobile-overlay { display: block; opacity: 1; }
 
         #dashboardModal { display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(13, 17, 23, 0.6); backdrop-filter: blur(8px); justify-content: center; align-items: center; animation: fadeInModal 0.3s ease; }
         .dashboard-modal-content { width: 100%; height: 100%; background-color: var(--phoenix-bg); border-radius: 0; border: none; }
@@ -124,9 +126,9 @@
         
         @media (max-width: 768px) {
             .app-container { grid-template-columns: 1fr; }
+            .app-container.sidebar-collapsed { grid-template-columns: 1fr; }
             .sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 10; transform: translateX(-100%); width: 280px; }
-            .sidebar.sidebar-open { transform: translateX(0); }
-            .menu-toggle { display: flex; }
+            .app-container.sidebar-mobile-open .sidebar { transform: translateX(0); }
             .chat-area, .input-area-wrapper { padding: 1rem; }
             .kb-content { grid-template-columns: 1fr; }
             .kb-questions { border-right: none; border-bottom: 1px solid var(--phoenix-border); max-height: 40vh; }
@@ -136,7 +138,7 @@
 </head>
 <body>
     
-    <div class="app-container">
+    <div class="app-container" id="appContainer">
         <aside class="sidebar" id="sidebar">
             <div class="logo">
                 <img src="https://lh3.googleusercontent.com/d/1tG7oc1T5Xd3f1vZ267xPCX9k2SVrfNz1" alt="Logo" class="logo-icon">
@@ -241,6 +243,7 @@
             constructor() {
                 this.config = { SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", SHEET_NAME: "Retenção", NOTIFICATION_SHEET: "Notificações", AUTO_UPDATE_INTERVAL: 600000, DB_NAME: "ChurnAssistDB", STORE_NAME: "KnowledgeBase", DATA_KEY: "qaData", LAST_UPDATE_KEY: "lastUpdate", MODEL_KEY: "useModel", SIMILARITY_THRESHOLD: 0.7, FUSE_THRESHOLD: 0.35, NOTIFICATION_CHECK_INTERVAL: 300000, VAGUE_PHRASES: ['como funciona', 'o que é', 'qual o processo', 'qual o procedimento', 'como fazer para']};
                 this.elements = { 
+                    appContainer: document.getElementById('appContainer'),
                     questionInput: document.getElementById('questionInput'), 
                     askButton: document.getElementById('askButton'), 
                     chatArea: document.getElementById('chatArea'), 
@@ -269,22 +272,46 @@
                 this._init();
             }
             
-            async _init() { try { await this._initDatabase(); await this._loadInitialData(); this._setupEventListeners(); this._checkAndDisplayPersistentNotification(); this._startAutoUpdate(); this._startNotificationCheck(); await this._checkAdvancedModeStatus(); } catch (error) { console.error("Falha na inicialização crítica:", error); this._updateStatus("Erro crítico", 'error'); } }
+            async _init() {
+                try {
+                    await this._initDatabase();
+                    await this._loadInitialData();
+                    this._setupEventListeners();
+                    this._checkAndDisplayPersistentNotification();
+                    this._startAutoUpdate();
+                    this._startNotificationCheck();
+                    await this._checkAdvancedModeStatus();
+                    if (window.innerWidth > 768) {
+                        this.elements.appContainer.classList.remove('sidebar-collapsed');
+                    } else {
+                        this.elements.appContainer.classList.add('sidebar-collapsed');
+                    }
+                } catch (error) {
+                    console.error("Falha na inicialização crítica:", error);
+                    this._updateStatus("Erro crítico", 'error');
+                }
+            }
             
-            _setupEventListeners(){ 
-                this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
-                this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
-                this.elements.advancedModeToggle.addEventListener('change',(e)=>{this.state.isAdvancedMode=e.target.checked;this._saveToDatabase(this.state.isAdvancedMode,this.config.MODEL_KEY);if(this.state.isAdvancedMode&&!this.state.isModelLoaded){this._startModelLoading();} this._addBotMessage(`Modo Avançado ${this.state.isAdvancedMode?'ativado':'desativado'}.`);}); 
-                this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
-                this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
+            _setupEventListeners() {
+                this.elements.askButton.addEventListener('click', () => this._handleQuestion());
+                this.elements.questionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this._handleQuestion(); });
+                this.elements.advancedModeToggle.addEventListener('change', (e) => { this.state.isAdvancedMode = e.target.checked; this._saveToDatabase(this.state.isAdvancedMode, this.config.MODEL_KEY); if (this.state.isAdvancedMode && !this.state.isModelLoaded) { this._startModelLoading(); } this._addBotMessage(`Modo Avançado ${this.state.isAdvancedMode ? 'ativado' : 'desativado'}.`); });
+                this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; });
+                this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; });
                 this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
-                this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question,true);this.elements.suggestionTextarea.value='';this.elements.suggestionForm.classList.remove('active');}});
-                this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
-                this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
-                this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
+                this.elements.submitSuggestionBtn.addEventListener('click', () => { const question = this.elements.suggestionTextarea.value.trim(); if (question) { this._submitQuestionToForm(question, true); this.elements.suggestionTextarea.value = ''; this.elements.suggestionForm.classList.remove('active'); } });
+                this.elements.menuToggle.addEventListener('click', () => {
+                    if (window.innerWidth > 768) {
+                        this.elements.appContainer.classList.toggle('sidebar-collapsed');
+                    } else {
+                        this.elements.appContainer.classList.add('sidebar-mobile-open');
+                    }
+                });
+                this.elements.mobileOverlay.addEventListener('click', () => { this.elements.appContainer.classList.remove('sidebar-mobile-open'); });
+                this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); if (window.innerWidth <= 768) { this.elements.appContainer.classList.remove('sidebar-mobile-open'); } }); });
                 this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
                 this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
-                this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected');} });
+                this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected'); } });
             }
 
             _toggleSearchMode() {

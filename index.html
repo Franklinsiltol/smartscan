@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.2 - SCROLLBARS PERSONALIZADAS --- */
+        /* --- PROJETO PHOENIX v2.3 - RESPONSIVE FIX --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -123,38 +123,23 @@
         #closeDashboardBtn:hover { transform: translateX(-50%) scale(1.1); background-color: rgba(0,0,0,0.8); }
         .notification-banner { background-color: var(--phoenix-surface); border-left: 4px solid var(--phoenix-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 8px; animation: slideIn 0.3s ease-out; font-size: 0.9rem; }
         
-        /* --- SCROLLBARS PERSONALIZADAS --- */
-        .sidebar::-webkit-scrollbar,
-        .chat-area::-webkit-scrollbar,
-        .kb-questions::-webkit-scrollbar,
-        .kb-answer::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        .sidebar::-webkit-scrollbar-track,
-        .chat-area::-webkit-scrollbar-track,
-        .kb-questions::-webkit-scrollbar-track,
-        .kb-answer::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .sidebar::-webkit-scrollbar-thumb,
-        .chat-area::-webkit-scrollbar-thumb,
-        .kb-questions::-webkit-scrollbar-thumb,
-        .kb-answer::-webkit-scrollbar-thumb {
-            background-color: var(--phoenix-border);
-            border-radius: 8px;
-            border: 2px solid transparent;
-            background-clip: padding-box;
-            transition: background-color 0.2s ease;
-        }
-        .sidebar::-webkit-scrollbar-thumb:hover,
-        .chat-area::-webkit-scrollbar-thumb:hover,
-        .kb-questions::-webkit-scrollbar-thumb:hover,
-        .kb-answer::-webkit-scrollbar-thumb:hover {
-            background-color: var(--phoenix-text-secondary);
-        }
+        .sidebar::-webkit-scrollbar, .chat-area::-webkit-scrollbar, .kb-questions::-webkit-scrollbar, .kb-answer::-webkit-scrollbar { width: 8px; height: 8px; }
+        .sidebar::-webkit-scrollbar-track, .chat-area::-webkit-scrollbar-track, .kb-questions::-webkit-scrollbar-track, .kb-answer::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb, .chat-area::-webkit-scrollbar-thumb, .kb-questions::-webkit-scrollbar-thumb, .kb-answer::-webkit-scrollbar-thumb { background-color: var(--phoenix-border); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; transition: background-color 0.2s ease; }
+        .sidebar::-webkit-scrollbar-thumb:hover, .chat-area::-webkit-scrollbar-thumb:hover, .kb-questions::-webkit-scrollbar-thumb:hover, .kb-answer::-webkit-scrollbar-thumb:hover { background-color: var(--phoenix-text-secondary); }
 
+        /* --- MEDIA QUERY CORRIGIDA --- */
         @media (max-width: 768px) {
+            body { padding: 0; }
+            .app-container {
+                display: flex; /* Muda de grid para flex no mobile */
+            }
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.sidebar-open {
+                transform: translateX(0);
+            }
             .kb-content { grid-template-columns: 1fr; }
             .kb-questions { border-right: none; border-bottom: 1px solid var(--phoenix-border); max-height: 40vh; }
             .kb-answer { padding: 1.5rem; }

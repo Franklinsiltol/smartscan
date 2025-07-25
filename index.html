@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v3.1 - CÓDIGO RESTAURADO --- */
+        /* --- PROJETO PHOENIX v3.2 - MODO AVANÇADO CORRIGIDO --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -317,10 +317,8 @@
                     this._checkForUrlFilter();
                     await this._initDatabase();
                     await this._checkAdvancedModeStatus(); 
-                    
                     await this._fetchAndUpdateData();
                     this._setupEventListeners();
-
                     if (this.state.urlFilteredTeam) {
                         this._setupFilteredTeamView(this.state.urlFilteredTeam);
                     }
@@ -359,7 +357,7 @@
                 if (useAdvancedMode) {
                     this.state.isAdvancedMode = true;
                     this.elements.advancedModeToggle.checked = true;
-                    this._startModelLoading();
+                    await this._startModelLoading();
                 } else {
                     this.state.isAdvancedMode = false;
                     this.elements.advancedModeToggle.checked = false;
@@ -392,30 +390,27 @@
                 if (!this.state.isModelLoaded || !this.state.useModel) return [];
 
                 const questions = this.state.qaData.map(item => item.question);
+                if (questions.length === 0) return [];
+
                 const embeddings = await this.state.useModel.embed([query, ...questions]);
-                
                 const queryEmbedding = embeddings.slice(0, 1);
                 const questionEmbeddings = embeddings.slice(1);
-                
-                const scores = [];
-                for (let i = 0; i < questions.length; i++) {
-                    const scoreTensor = tf.matMul(queryEmbedding, questionEmbeddings.slice(i, i + 1), false, true);
-                    const score = await scoreTensor.data();
-                    scores.push({ index: i, score: score[0] });
-                    scoreTensor.dispose();
-                }
 
-                tf.dispose([embeddings, queryEmbedding, questionEmbeddings]);
+                const scoresTensor = tf.matMul(queryEmbedding, questionEmbeddings, false, true);
+                const scores = await scoresTensor.data();
+
+                tf.dispose([embeddings, queryEmbedding, questionEmbeddings, scoresTensor]);
+
+                const results = Array.from(scores).map((score, i) => ({
+                    item: this.state.qaData[i],
+                    score: score
+                }));
                 
-                return scores
+                return results
                     .sort((a, b) => b.score - a.score)
-                    .filter(item => item.score > 0.6)
-                    .map(item => ({
-                        item: this.state.qaData[item.index],
-                        score: item.score
-                    }));
+                    .filter(item => item.score > 0.6);
             }
-
+            
             async _handleQuestion() {
                 const question = this.elements.questionInput.value.trim();
                 if (!question) return;
@@ -475,17 +470,12 @@
                     }
                 }, 800);
             }
-            
+
             _addNotificationMessage(text) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'notification-message';
                 const formattedText = this._createHyperlinks(text).replace(/\n/g, '<br>');
-                messageDiv.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                    </svg>
-                    <div>${formattedText}</div>
-                `;
+                messageDiv.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"> <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/> </svg> <div>${formattedText}</div> `;
                 this.elements.chatArea.appendChild(messageDiv);
                 this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
             }
@@ -494,17 +484,12 @@
                 const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET_NAME)}&t=${Date.now()}`;
                 try {
                     const response = await fetch(url);
-                    if (!response.ok) {
-                        console.warn(`Aba de notificações "${this.config.NOTIFICATION_SHEET_NAME}" não encontrada.`);
-                        return;
-                    }
+                    if (!response.ok) { console.warn(`Aba de notificações "${this.config.NOTIFICATION_SHEET_NAME}" não encontrada.`); return; }
                     const csvText = await response.text();
                     if (!csvText.trim()) return;
                     const parsedData = this._parseCSV(csvText);
                     const notificationMessage = parsedData?.[0]?.[0]?.trim();
-                    if (notificationMessage) {
-                        this._addNotificationMessage(notificationMessage);
-                    }
+                    if (notificationMessage) { this._addNotificationMessage(notificationMessage); }
                 } catch (error) {
                     console.error("Não foi possível buscar a notificação:", error);
                 }
@@ -513,9 +498,7 @@
             _checkForUrlFilter() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const teamFromUrl = urlParams.get('team');
-                if (teamFromUrl) {
-                    this.state.urlFilteredTeam = decodeURIComponent(teamFromUrl);
-                }
+                if (teamFromUrl) { this.state.urlFilteredTeam = decodeURIComponent(teamFromUrl); }
             }
 
             _setupFilteredTeamView(teamName) {
@@ -533,9 +516,7 @@
             }
 
             async _fetchAndUpdateData(isManualUpdate = false) {
-                if (!isManualUpdate && !this.state.isModelLoading) {
-                    this._updateStatus("Atualizando base...", 'loading');
-                }
+                if (!isManualUpdate && !this.state.isModelLoading) { this._updateStatus("Atualizando base...", 'loading'); }
                 const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
                 try {
                     const response = await fetch(url);
@@ -569,7 +550,7 @@
                 if (teamName === 'Todos') { this.state.qaData = [...this.state.allQaData]; } else { this.state.qaData = this.state.allQaData.filter(item => item.team.split(',').map(t => t.trim()).includes(teamName)); }
                 this._initSearchEngine();
                 document.querySelectorAll('.team-filter').forEach(btn => btn.classList.toggle('active', btn.dataset.teamName === teamName));
-                this.elements.chatArea.innerHTML = '';
+                if (!this.state.isModelLoading) { this.elements.chatArea.innerHTML = ''; }
                 if (this.state.isSearchMode) { this._populateKbList(); }
             }
 

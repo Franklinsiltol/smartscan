@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.7 - URL SCOPED TEAMS --- */
+        /* --- PROJETO PHOENIX v2.8 - URL DIRECTORY MODEL --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -42,7 +42,7 @@
         .logo-text { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
         .sidebar-section { display: flex; flex-direction: column; gap: 0.5rem; }
         .sidebar-title { font-size: 0.75rem; font-weight: 700; color: var(--phoenix-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0.75rem; margin-bottom: 0.25rem; }
-        .sidebar-button { background: transparent; border: 1px solid transparent; color: var(--phoenix-text-secondary); padding: 0.75rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; transition: all 0.2s ease; width: 100%; text-align: left; }
+        .sidebar-button { background: transparent; border: 1px solid transparent; color: var(--phoenix-text-secondary); padding: 0.75rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; transition: all 0.2s ease; width: 100%; text-align: left; text-decoration: none; }
         .sidebar-button:hover, .sidebar-button.active { background: rgba(255,255,255,0.05); color: var(--phoenix-text-primary); }
         .sidebar-button svg { width: 20px; height: 20px; flex-shrink: 0; }
         .settings-toggle { color: var(--phoenix-text-secondary); font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: 8px; transition: all 0.2s ease; cursor: pointer; }
@@ -57,10 +57,6 @@
         #suggestionForm.active { display: flex; }
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
         #submitSuggestionBtn { background: var(--phoenix-primary); color: #fff; font-weight: 600; }
-        #currentTeamDisplay { display: none; }
-        .scoped-view #teamsList, .scoped-view #allTeamsBtn { display: none; }
-        .scoped-view #currentTeamDisplay { display: block; }
-        .scoped-view #viewToggleBtn { display: none; } /* Opcional: esconder o modo busca no modo time */
 
         .main-view { width: 100%; display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
@@ -155,12 +151,9 @@
             
             <div id="teamsSection" class="sidebar-section">
                 <div class="sidebar-title">Times</div>
-                <div id="currentTeamDisplay"></div>
-                <button id="allTeamsBtn" class="sidebar-button team-filter active" data-team-name="Todos">
-                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                    <span>Todos os Times</span>
-                </button>
-                <div id="teamsList"></div>
+                <div id="teamsList">
+                    <!-- Links dos times serão inseridos aqui pelo JS -->
+                </div>
             </div>
 
             <div class="sidebar-section">
@@ -217,32 +210,8 @@
                 </div>
             </header>
 
-            <div class="chat-view-content">
-                <div class="chat-container">
-                    <div class="chat-area" id="chatArea"></div>
-                </div>
-                <div class="input-area-wrapper">
-                    <div class="input-area">
-                        <input type="text" id="questionInput" placeholder="Digite sua mensagem..." autocomplete="off">
-                        <button id="askButton" title="Enviar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-                    </div>
-                    <div id="autoUpdateStatus" class="status-footer"></div>
-                </div>
-            </div>
-
-            <div class="kb-view">
-                <div class="kb-search-header">
-                    <input type="text" id="kbSearchInput" placeholder="Buscar na base de conhecimento...">
-                </div>
-                <div class="kb-content">
-                    <div id="kbQuestionList" class="kb-questions"></div>
-                    <div id="kbAnswerArea" class="kb-answer">
-                         <div class="kb-answer-placeholder">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                            Selecione uma pergunta na lista para ver a resposta aqui.
-                         </div>
-                    </div>
-                </div>
+            <div id="mainContent">
+                <!-- Conteúdo (Chat ou KB) será injetado aqui -->
             </div>
         </main>
     </div>
@@ -256,6 +225,48 @@
         </button>
     </div>
 
+    <!-- Templates de Conteúdo -->
+    <template id="chatTemplate">
+        <div class="chat-view-content">
+            <div class="chat-container">
+                <div class="chat-area" id="chatArea"></div>
+            </div>
+            <div class="input-area-wrapper">
+                <div class="input-area">
+                    <input type="text" id="questionInput" placeholder="Digite sua mensagem..." autocomplete="off">
+                    <button id="askButton" title="Enviar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                </div>
+                <div id="autoUpdateStatus" class="status-footer"></div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="kbTemplate">
+         <div class="kb-view">
+            <div class="kb-search-header">
+                <input type="text" id="kbSearchInput" placeholder="Buscar na base de conhecimento...">
+            </div>
+            <div class="kb-content">
+                <div id="kbQuestionList" class="kb-questions"></div>
+                <div id="kbAnswerArea" class="kb-answer">
+                     <div class="kb-answer-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                        Selecione uma pergunta na lista para ver a resposta aqui.
+                     </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="placeholderTemplate">
+        <div class="kb-answer-placeholder" style="padding: 2rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+            <h2>Selecione um time</h2>
+            <p>Escolha um time no menu lateral para iniciar.</p>
+        </div>
+    </template>
+
+
     <script>
         class ChurnAssist {
             constructor() {
@@ -264,83 +275,96 @@
                     SHEET_NAME: "Perguntas",
                     SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
                 };
-                this.elements = { 
-                    appContainer: document.getElementById('appContainer'),
-                    questionInput: document.getElementById('questionInput'), 
-                    askButton: document.getElementById('askButton'), 
-                    chatArea: document.getElementById('chatArea'), 
-                    statusText: document.getElementById('statusText'), 
-                    statusDot: document.querySelector('.status-dot'), 
-                    autoUpdateStatus: document.getElementById('autoUpdateStatus'), 
-                    advancedModeToggle: document.getElementById('advancedModeToggle'), 
-                    dashboardButton: document.getElementById('dashboardButton'), 
-                    dashboardModal: document.getElementById('dashboardModal'), 
-                    closeDashboardBtn: document.getElementById('closeDashboardBtn'),
-                    sidebar: document.getElementById('sidebar'),
-                    menuToggle: document.getElementById('menuToggle'),
-                    mobileOverlay: document.getElementById('mobileOverlay'),
-                    suggestButton: document.getElementById('suggestButton'),
-                    suggestionForm: document.getElementById('suggestionForm'),
-                    suggestionTextarea: document.getElementById('suggestionTextarea'),
-                    submitSuggestionBtn: document.getElementById('submitSuggestionBtn'),
-                    commandButtons: document.querySelectorAll('.command-button'),
-                    viewToggleBtn: document.getElementById('viewToggleBtn'),
-                    viewToggleText: document.getElementById('viewToggleText'),
-                    kbSearchInput: document.getElementById('kbSearchInput'),
-                    kbQuestionList: document.getElementById('kbQuestionList'),
-                    kbAnswerArea: document.getElementById('kbAnswerArea'),
-                    allTeamsBtn: document.getElementById('allTeamsBtn'),
-                    teamsList: document.getElementById('teamsList'),
-                    currentTeamDisplay: document.getElementById('currentTeamDisplay')
-                };
-                this.state = { db: null, fuse: null, allQaData: [], allTeams: [], qaData: [], activeTeamFilter: 'Todos', lastUnansweredQuestion: null, isSearchMode: false, scopedTeam: null };
+                this.elements = {};
+                this.state = { db: null, fuse: null, allQaData: [], qaData: [], allTeams: [], activeTeam: null, lastUnansweredQuestion: null, isSearchMode: false };
                 this._init();
             }
             
             async _init() { 
                 try { 
                     const urlParams = new URLSearchParams(window.location.search);
-                    const teamFromUrl = urlParams.get('time');
-                    if(teamFromUrl) {
-                        this.state.scopedTeam = teamFromUrl.trim();
-                        document.body.classList.add('scoped-view');
-                    }
+                    this.state.activeTeam = urlParams.get('time');
+                    
+                    this.elements.sidebar = document.getElementById('sidebar');
+                    this.elements.menuToggle = document.getElementById('menuToggle');
+                    this.elements.mobileOverlay = document.getElementById('mobileOverlay');
+                    this.elements.teamsList = document.getElementById('teamsList');
+                    this.elements.mainContent = document.getElementById('mainContent');
                     
                     await this._fetchAndUpdateData(); 
+                    this._setupView();
                     this._setupEventListeners(); 
                 } catch (error) { 
                     console.error("Falha na inicialização crítica:", error); 
-                    this._updateStatus("Erro crítico", 'error'); 
+                    if(this.elements.statusText) this._updateStatus("Erro crítico", 'error'); 
                 } 
+            }
+
+            _setupView() {
+                this._populateTeamsList();
+                if (this.state.activeTeam) {
+                    // Scoped View
+                    document.body.classList.add('scoped-view');
+                    this._applyTeamFilter(this.state.activeTeam, true);
+                    this._renderTemplate('chatTemplate');
+                    this._rebindChatElements();
+                    this._addBotMessage(`Olá! Sou o ChurnAssist. Conectado ao time: ${this.state.activeTeam}. Como posso ajudar?`);
+                } else {
+                    // Directory View
+                    this._renderTemplate('placeholderTemplate');
+                    this.elements.sidebar.classList.add('sidebar-open');
+                }
+            }
+
+            _rebindChatElements() {
+                this.elements.questionInput = document.getElementById('questionInput');
+                this.elements.askButton = document.getElementById('askButton');
+                this.elements.chatArea = document.getElementById('chatArea');
+                this.elements.autoUpdateStatus = document.getElementById('autoUpdateStatus');
+                this.elements.statusText = document.getElementById('statusText');
+                this.elements.statusDot = document.querySelector('.status-dot');
             }
             
             _setupEventListeners(){ 
-                this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
-                this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
-                this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
-                this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
-                this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
-                this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question);}});
                 this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
                 this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
-                this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
-                this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
-                this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
-                this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected');} });
-                this.elements.allTeamsBtn.addEventListener('click', () => this._applyTeamFilter('Todos'));
-                this.elements.teamsList.addEventListener('click', (e) => { const teamButton = e.target.closest('.team-filter'); if(teamButton){ this._applyTeamFilter(teamButton.dataset.teamName); } });
+
+                // Eventos que só funcionam se estiver em Scoped View
+                if (this.state.activeTeam) {
+                    this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
+                    this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
+                    this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
+                    this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
+                }
+            }
+
+            _renderTemplate(templateId) {
+                const template = document.getElementById(templateId);
+                if (template) {
+                    this.elements.mainContent.innerHTML = '';
+                    this.elements.mainContent.appendChild(template.content.cloneNode(true));
+                }
             }
 
             _toggleSearchMode() {
                 this.state.isSearchMode = !this.state.isSearchMode;
-                document.body.classList.toggle('search-mode-active');
                 if (this.state.isSearchMode) {
+                    this._renderTemplate('kbTemplate');
+                    this.elements.kbSearchInput = document.getElementById('kbSearchInput');
+                    this.elements.kbQuestionList = document.getElementById('kbQuestionList');
+                    this.elements.kbAnswerArea = document.getElementById('kbAnswerArea');
+                    this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
+                    this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected');} });
                     this.elements.viewToggleText.textContent = "Voltar ao Chat";
                     this.elements.viewToggleBtn.classList.add('active');
                     this._populateKbList();
                 } else {
+                    this._renderTemplate('chatTemplate');
+                    this._rebindChatElements();
                     this.elements.viewToggleText.textContent = "Modo Busca";
                     this.elements.viewToggleBtn.classList.remove('active');
+                    // Recarrega o histórico do chat
+                    this._addBotMessage(`Filtro atual: ${this.state.activeTeam}. Como posso ajudar?`);
                 }
             }
             
@@ -359,8 +383,11 @@
                 this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`;
             }
 
-            _addMessage(text,sender,options=[]){const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
-            _showTypingIndicator(){this._removeTypingIndicator();const typingDiv=document.createElement('div');typingDiv.id='typingIndicator';typingDiv.className='message bot-message';typingDiv.innerHTML='<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';this.elements.chatArea.appendChild(typingDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
+            _addMessage(text,sender,options=[]){
+                if(!this.elements.chatArea) return;
+                const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;
+            }
+            _showTypingIndicator(){this._removeTypingIndicator();if(!this.elements.chatArea) return; const typingDiv=document.createElement('div');typingDiv.id='typingIndicator';typingDiv.className='message bot-message';typingDiv.innerHTML='<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';this.elements.chatArea.appendChild(typingDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
 
             async _handleQuestion() {
                 const question = this.elements.questionInput.value.trim();
@@ -416,7 +443,7 @@
             }
             
             async _fetchAndUpdateData() {
-                this._updateStatus("Atualizando base...", 'loading');
+                this._updateStatus("Carregando base...", 'loading');
                 const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
                 try {
                     const response = await fetch(url);
@@ -437,16 +464,12 @@
                         team: row[teamIndex]?.trim() || "Geral",
                         processedQuestion: this._processQuery(row[questionIndex]?.trim() || "")
                     })).filter(item => item.question && item.answer);
-
-                    this._populateTeamsList();
-                    const filterToApply = this.state.scopedTeam && this.state.allTeams.includes(this.state.scopedTeam) ? this.state.scopedTeam : 'Todos';
-                    this._applyTeamFilter(filterToApply, true);
+                    
                     this._updateStatus('Pronto', 'success');
 
                 } catch(error) {
                     console.error("Erro ao buscar dados:", error);
                     this._updateStatus("Erro ao carregar", 'error');
-                    this._addBotMessage("Não consegui carregar a base de conhecimento. Verifique o console para mais detalhes.");
                 }
             }
 
@@ -455,45 +478,20 @@
                 this.state.allQaData.forEach(item => { item.team.split(',').forEach(t => teams.add(t.trim())); });
                 this.state.allTeams = [...teams].sort();
                 
-                if (this.state.scopedTeam) {
-                    this.elements.currentTeamDisplay.innerHTML = `<div class="sidebar-title">Time Ativo</div><div class="sidebar-button" style="cursor: default; opacity: 1; color: var(--phoenix-text-primary);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>${this.state.scopedTeam}</span></div>`;
-                } else {
-                    this.elements.teamsList.innerHTML = this.state.allTeams.map(team => `
-                        <button class="sidebar-button team-filter" data-team-name="${team}">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                            <span>${team}</span>
-                        </button>
-                    `).join('');
-                }
+                this.elements.teamsList.innerHTML = this.state.allTeams.map(team => `
+                    <a href="?time=${encodeURIComponent(team)}" class="sidebar-button team-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span>${team}</span>
+                    </a>
+                `).join('');
             }
             
             _applyTeamFilter(teamName, isInitialLoad = false) {
-                this.state.activeTeamFilter = teamName;
-                
-                if (teamName === 'Todos') {
-                    this.state.qaData = [...this.state.allQaData];
-                } else {
-                    this.state.qaData = this.state.allQaData.filter(item => 
-                        item.team.split(',').map(t => t.trim()).includes(teamName)
-                    );
-                }
-                
-                this._initSearchEngine();
-                
-                document.querySelectorAll('.team-filter').forEach(btn => 
-                    btn.classList.toggle('active', btn.dataset.teamName === teamName)
+                this.state.activeTeam = teamName;
+                this.state.qaData = this.state.allQaData.filter(item => 
+                    item.team.split(',').map(t => t.trim()).includes(teamName)
                 );
-                
-                this.elements.chatArea.innerHTML = '';
-                if(isInitialLoad){
-                    this._addBotMessage(`Olá! Sou o ChurnAssist. Conectado ao time: ${teamName}. Como posso ajudar?`);
-                } else {
-                    this._addBotMessage(`Filtro aplicado: ${teamName}. Como posso ajudar?`);
-                }
-
-                if (this.state.isSearchMode) {
-                    this._populateKbList();
-                }
+                this._initSearchEngine();
             }
             
             _initSearchEngine() {
@@ -507,18 +505,15 @@
                 try {
                     await fetch(this.config.SUGGESTION_FORM_URL, { method: 'POST', mode: 'no-cors', body: formData });
                     this._addBotMessage("Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe.");
-                } catch (error) {
-                    console.error("Erro ao enviar pergunta:", error);
-                    this._addBotMessage("Houve um erro ao enviar sua pergunta.");
-                }
+                } catch (error) { console.error("Erro ao enviar pergunta:", error); this._addBotMessage("Houve um erro ao enviar sua pergunta."); }
                 this.state.lastUnansweredQuestion = null;
             }
             
-            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Filtro atual: ${this.state.activeTeamFilter}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData();break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
+            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Contexto: ${this.state.activeTeam}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData();break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
             _addUserMessage(text){this._addMessage(text,'user');}
             _addBotMessage(text,options=[]){this._removeTypingIndicator();this._addMessage(text,'bot',options);}
             _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}
-            _updateStatus(text,status){this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
+            _updateStatus(text,status){if(!this.elements.statusText) return; this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
             _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
              _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
         }

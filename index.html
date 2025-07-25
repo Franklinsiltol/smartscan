@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.3 - RESPONSIVE FIX --- */
+        /* --- PROJETO PHOENIX v2.6 - FILTRO POR TIME --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -35,7 +35,7 @@
         
         .app-container { display: flex; width: 100%; height: 100%; position: relative; z-index: 1; }
 
-        .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: 260px; z-index: 11; transform: translateX(-100%); background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
+        .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: 260px; z-index: 11; transform: translateX(-100%); background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
         .sidebar.sidebar-open { transform: translateX(0); }
         .logo { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;}
         .logo-icon { width: 36px; height: 36px; border-radius: 8px; }
@@ -128,18 +128,11 @@
         .sidebar::-webkit-scrollbar-thumb, .chat-area::-webkit-scrollbar-thumb, .kb-questions::-webkit-scrollbar-thumb, .kb-answer::-webkit-scrollbar-thumb { background-color: var(--phoenix-border); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; transition: background-color 0.2s ease; }
         .sidebar::-webkit-scrollbar-thumb:hover, .chat-area::-webkit-scrollbar-thumb:hover, .kb-questions::-webkit-scrollbar-thumb:hover, .kb-answer::-webkit-scrollbar-thumb:hover { background-color: var(--phoenix-text-secondary); }
 
-        /* --- MEDIA QUERY CORRIGIDA --- */
         @media (max-width: 768px) {
             body { padding: 0; }
-            .app-container {
-                display: flex; /* Muda de grid para flex no mobile */
-            }
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            .sidebar.sidebar-open {
-                transform: translateX(0);
-            }
+            .app-container { width: 100vw; height: 100vh; max-height: none; border-radius: 0; border: none; box-shadow: none; }
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .sidebar.sidebar-open { transform: translateX(0); }
             .kb-content { grid-template-columns: 1fr; }
             .kb-questions { border-right: none; border-bottom: 1px solid var(--phoenix-border); max-height: 40vh; }
             .kb-answer { padding: 1.5rem; }
@@ -156,6 +149,15 @@
                 <div class="logo-text">ChurnAssist</div>
             </div>
             
+            <div class="sidebar-section">
+                <div class="sidebar-title">Times</div>
+                <button id="allTeamsBtn" class="sidebar-button team-filter active" data-team-name="Todos">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                    <span>Todos os Times</span>
+                </button>
+                <div id="teamsList"></div>
+            </div>
+
             <div class="sidebar-section">
                 <div class="sidebar-title">Visualização</div>
                 <button id="viewToggleBtn" class="sidebar-button" title="Alternar Visualização">
@@ -252,9 +254,15 @@
     <script>
         class ChurnAssist {
             constructor() {
-                this.config = { SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", SHEET_NAME: "Retenção", NOTIFICATION_SHEET: "Notificações", AUTO_UPDATE_INTERVAL: 600000, DB_NAME: "ChurnAssistDB", STORE_NAME: "KnowledgeBase", DATA_KEY: "qaData", LAST_UPDATE_KEY: "lastUpdate", MODEL_KEY: "useModel", SIMILARITY_THRESHOLD: 0.7, FUSE_THRESHOLD: 0.35, NOTIFICATION_CHECK_INTERVAL: 300000, VAGUE_PHRASES: ['como funciona', 'o que é', 'qual o processo', 'qual o procedimento', 'como fazer para']};
+                this.config = { 
+                    SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", 
+                    SHEET_NAME: "Perguntas",
+                    SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
+                    AUTO_UPDATE_INTERVAL: 600000, 
+                    DB_NAME: "ChurnAssistDB", 
+                    STORE_NAME: "KnowledgeBase"
+                };
                 this.elements = { 
-                    appContainer: document.getElementById('appContainer'),
                     questionInput: document.getElementById('questionInput'), 
                     askButton: document.getElementById('askButton'), 
                     chatArea: document.getElementById('chatArea'), 
@@ -278,27 +286,39 @@
                     kbSearchInput: document.getElementById('kbSearchInput'),
                     kbQuestionList: document.getElementById('kbQuestionList'),
                     kbAnswerArea: document.getElementById('kbAnswerArea'),
+                    allTeamsBtn: document.getElementById('allTeamsBtn'),
+                    teamsList: document.getElementById('teamsList')
                 };
-                this.state = { db: null, fuse: null, qaData: [], lastUpdateHash: "", autoUpdateIntervalId: null, notificationIntervalId: null, lastNotification: null, useModel: null, isModelLoaded: false, isModelLoading: false, isAdvancedMode: false, isSearchMode: false, conversationHistory: [], lastUnansweredQuestion: null };
+                this.state = { db: null, fuse: null, allQaData: [], qaData: [], activeTeamFilter: 'Todos', lastUpdateHash: "", lastUnansweredQuestion: null, isSearchMode: false };
                 this._init();
             }
             
-            async _init() { try { await this._initDatabase(); await this._loadInitialData(); this._setupEventListeners(); this._checkAndDisplayPersistentNotification(); this._startAutoUpdate(); this._startNotificationCheck(); await this._checkAdvancedModeStatus(); } catch (error) { console.error("Falha na inicialização crítica:", error); this._updateStatus("Erro crítico", 'error'); } }
+            async _init() { 
+                try { 
+                    await this._initDatabase(); 
+                    await this._fetchAndUpdateData(); 
+                    this._setupEventListeners(); 
+                } catch (error) { 
+                    console.error("Falha na inicialização crítica:", error); 
+                    this._updateStatus("Erro crítico", 'error'); 
+                } 
+            }
             
             _setupEventListeners(){ 
                 this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
                 this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
-                this.elements.advancedModeToggle.addEventListener('change',(e)=>{this.state.isAdvancedMode=e.target.checked;this._saveToDatabase(this.state.isAdvancedMode,this.config.MODEL_KEY);if(this.state.isAdvancedMode&&!this.state.isModelLoaded){this._startModelLoading();} this._addBotMessage(`Modo Avançado ${this.state.isAdvancedMode?'ativado':'desativado'}.`);}); 
                 this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
                 this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
                 this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
-                this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question,true);this.elements.suggestionTextarea.value='';this.elements.suggestionForm.classList.remove('active');}});
+                this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question);}});
                 this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
                 this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
                 this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
                 this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
                 this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
                 this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected');} });
+                this.elements.allTeamsBtn.addEventListener('click', () => this._applyTeamFilter('Todos'));
+                this.elements.teamsList.addEventListener('click', (e) => { const teamButton = e.target.closest('.team-filter'); if(teamButton){ this._applyTeamFilter(teamButton.dataset.teamName); } });
             }
 
             _toggleSearchMode() {
@@ -349,7 +369,7 @@
                         if (!this.state.fuse) { answerText = "A base de conhecimento não está pronta."; }
                         else {
                             const results = this.state.fuse.search(processedQuery);
-                            if (results.length > 0 && results[0].score < this.config.FUSE_THRESHOLD) {
+                            if (results.length > 0 && results[0].score < 0.35) {
                                 answerText = results[0].item.answer;
                             } else if (results.length > 0) {
                                 answerText = "Não tenho certeza, mas talvez uma destas opções ajude:";
@@ -375,7 +395,7 @@
                 const yesButton = document.createElement('button');
                 yesButton.className = 'action-button yes';
                 yesButton.textContent = 'Sim, sugerir';
-                yesButton.onclick = () => { this._submitQuestionToForm(this.state.lastUnansweredQuestion); buttonsContainer.innerHTML = `<p style="font-size: 0.85em; color: var(--phoenix-text-secondary);">Obrigado pela contribuição!</p>`; };
+                yesButton.onclick = () => { this._submitQuestionToForm(this.state.lastUnansweredQuestion); };
                 const noButton = document.createElement('button');
                 noButton.className = 'action-button no';
                 noButton.textContent = 'Não';
@@ -384,33 +404,116 @@
                 buttonsContainer.appendChild(noButton);
                 messageDiv.appendChild(buttonsContainer);
             }
+            
+            async _fetchAndUpdateData() {
+                this._updateStatus("Atualizando base...", 'loading');
+                const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                    const csvText = await response.text();
+                    
+                    const parsedData = this._parseCSV(csvText);
+                    const headers = parsedData[0].map(h => h.trim().toLowerCase());
+                    const questionIndex = headers.indexOf("pergunta");
+                    const answerIndex = headers.indexOf("resposta");
+                    const teamIndex = headers.indexOf("time");
 
-            _startNotificationCheck() { if (this.state.notificationIntervalId) clearInterval(this.state.notificationIntervalId); this.state.notificationIntervalId = setInterval(() => this._checkForNotifications(), this.config.NOTIFICATION_CHECK_INTERVAL); this._checkForNotifications(); }
-            _checkAndDisplayPersistentNotification() { const storedText = localStorage.getItem('neuroAssistNotificationText'); const storedTimestamp = localStorage.getItem('neuroAssistNotificationTimestamp'); const twentyFourHours = 86400000; if (storedText && storedTimestamp) { const age = Date.now() - parseInt(storedTimestamp, 10); if (age < twentyFourHours) { this._showNotification(storedText); this.state.lastNotification = storedText; } else { localStorage.removeItem('neuroAssistNotificationText'); localStorage.removeItem('neuroAssistNotificationTimestamp'); } } }
-            async _checkForNotifications() { try { const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET)}&range=A1&t=${Date.now()}`; const response = await fetch(url); if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`); const csvText = await response.text(); const notificationText = this._parseCSV(csvText)[0][0]?.trim(); if (notificationText && notificationText !== this.state.lastNotification) { localStorage.setItem('neuroAssistNotificationText', notificationText); localStorage.setItem('neuroAssistNotificationTimestamp', Date.now().toString()); this._showNotification(notificationText); this.state.lastNotification = notificationText; } } catch (error) { console.error("Erro ao verificar notificações:", error); } }
-            _showNotification(text) { if (!text) return; const existingBanner = document.getElementById('active-notification-banner'); if (existingBanner) existingBanner.remove(); const notificationDiv = document.createElement('div'); notificationDiv.id = 'active-notification-banner'; notificationDiv.className = 'notification-banner'; notificationDiv.innerHTML = `<strong>Notificação:</strong> ${text}`; if (this.elements.chatArea.firstChild) { this.elements.chatArea.insertBefore(notificationDiv, this.elements.chatArea.firstChild); } else { this.elements.chatArea.appendChild(notificationDiv); } this.elements.chatArea.scrollTop = 0; }
-            _updateFooterStatus(message, status = 'info') { const el = this.elements.autoUpdateStatus; if (!el) return; let iconSvg = ''; switch (status) { case 'success': iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>'; break; case 'error': iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>'; break; case 'info': default: iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>'; break; } el.innerHTML = `${iconSvg}<span>${message}</span>`; }
-            async _fetchSheetData() { this._updateStatus("Atualizando...", 'loading'); const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`; try { const response = await fetch(url); if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`); const csvText = await response.text(); const currentHash = this._hashString(csvText); if (currentHash === this.state.lastUpdateHash) { this._updateFooterStatus(`Base verificada às ${new Date().toLocaleTimeString()}.`, 'success'); this._updateStatus(`Pronto`, 'success'); return { updated: false }; } const parsedData = this._parseCSV(csvText); if (parsedData.length < 2) { throw new Error("CSV inválido ou vazio."); } const headers = parsedData[0].map(h => h.trim().toLowerCase()); const questionIndex = headers.indexOf("pergunta"); const answerIndex = headers.indexOf("resposta"); if (questionIndex === -1 || answerIndex === -1) { this._addBotMessage(`ERRO: Não encontrei as colunas "pergunta" e "resposta".`); throw new Error("Cabeçalhos não encontrados."); } const formattedData = parsedData.slice(1).map(row => ({ question: row[questionIndex]?.trim() || "", answer: row[answerIndex]?.trim() || "", processedQuestion: this._processQuery(row[questionIndex]?.trim() || "") })).filter(item => item.question && item.answer); return { data: formattedData, hash: currentHash, updated: true }; } catch (error) { console.error("Erro ao buscar dados da planilha:", error); this._updateStatus("Erro ao atualizar", 'error'); throw error; } }
-            async _fetchAndUpdateData(isManual = false) { try { const result = await this._fetchSheetData(); if (result && result.updated) { this.state.qaData = result.data; this.state.lastUpdateHash = result.hash; await this._saveToDatabase(result.data, result.hash); this._initSearchEngine(); this._updateStatus(`Pronto`, 'success'); this._updateFooterStatus(`Base atualizada às ${new Date().toLocaleTimeString()}`, 'success'); if (this.elements.chatArea.children.length > 1 || isManual) { this._addBotMessage(`Base de conhecimento atualizada! Agora tenho ${result.data.length} respostas.`); } } } catch (error) { this._addBotMessage("Ocorreu um erro durante a atualização."); } }
-            _startAutoUpdate() { if (this.state.autoUpdateIntervalId) clearInterval(this.state.autoUpdateIntervalId); this.state.autoUpdateIntervalId = setInterval(async () => { try { await this._fetchSheetData(); } catch (error) { console.error("Erro na verificação automática:", error); this._updateFooterStatus(`Erro na verificação (${new Date().toLocaleTimeString()})`, 'error'); } }, this.config.AUTO_UPDATE_INTERVAL); this._updateFooterStatus(`Verificação a cada ${this.config.AUTO_UPDATE_INTERVAL / 60000} min.`, 'info'); }
-            async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 3); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
-            async _loadInitialData() { try { const { data, hash } = await this._loadFromDatabase(); if (data && data.length > 0) { this.state.qaData = data; this.state.lastUpdateHash = hash; this._initSearchEngine(); this._updateStatus(`Pronto`); this._addBotMessage("Olá! Sou o ChurnAssist. Como posso ajudar?"); } else { await this._fetchAndUpdateData(); } } catch (error) { console.error("Erro ao carregar dados iniciais:", error); this._updateStatus("Erro ao carregar", 'error'); await this._fetchAndUpdateData(); } }
-            _initSearchEngine() { this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4, ignoreLocation: true, minMatchCharLength: 2 }); }
-            _processQuery(text) { if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, ''); let doc = nlp(text); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
-            async _submitQuestionToForm(question,fromCommand=false){if(!question)return;const formUrl='https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse';const formData=new FormData();formData.append('entry.2126538361',question);try{await fetch(formUrl,{method:'POST',mode:'no-cors',body:formData});let confirmationMessage=fromCommand?"Obrigado! Sua sugestão foi enviada para análise.":"Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe.";this._addBotMessage(confirmationMessage);}catch(error){console.error("Erro ao enviar pergunta:",error);this._addBotMessage("Houve um erro ao enviar sua pergunta.");} this.state.lastUnansweredQuestion=null;}
-            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/ajuda':this._addBotMessage("Comandos disponíveis:\n`/limpar`\n`/atualizar`");break;case'/limpar':this.elements.chatArea.innerHTML='';this._checkAndDisplayPersistentNotification();this._addBotMessage("Chat limpo!");break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData(true);break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido. Digite /ajuda.`);}}
+                    if (questionIndex === -1 || answerIndex === -1 || teamIndex === -1) {
+                        throw new Error('Colunas "pergunta", "resposta" e "time" são obrigatórias.');
+                    }
+                    
+                    this.state.allQaData = parsedData.slice(1).map(row => ({
+                        question: row[questionIndex]?.trim() || "",
+                        answer: row[answerIndex]?.trim() || "",
+                        team: row[teamIndex]?.trim() || "Geral",
+                        processedQuestion: this._processQuery(row[questionIndex]?.trim() || "")
+                    })).filter(item => item.question && item.answer);
+
+                    this._populateTeamsList();
+                    this._applyTeamFilter('Todos');
+                    this._addBotMessage("Olá! Sou o ChurnAssist. Como posso ajudar?");
+                    this._updateStatus('Pronto', 'success');
+
+                } catch(error) {
+                    console.error("Erro ao buscar dados:", error);
+                    this._updateStatus("Erro ao carregar", 'error');
+                    this._addBotMessage("Não consegui carregar a base de conhecimento. Verifique o console para mais detalhes.");
+                }
+            }
+
+            _populateTeamsList() {
+                const teams = new Set();
+                this.state.allQaData.forEach(item => {
+                    item.team.split(',').forEach(t => teams.add(t.trim()));
+                });
+                
+                this.elements.teamsList.innerHTML = [...teams].sort().map(team => `
+                    <button class="sidebar-button team-filter" data-team-name="${team}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span>${team}</span>
+                    </button>
+                `).join('');
+            }
+            
+            _applyTeamFilter(teamName) {
+                this.state.activeTeamFilter = teamName;
+                
+                if (teamName === 'Todos') {
+                    this.state.qaData = [...this.state.allQaData];
+                } else {
+                    this.state.qaData = this.state.allQaData.filter(item => 
+                        item.team.split(',').map(t => t.trim()).includes(teamName)
+                    );
+                }
+                
+                this._initSearchEngine();
+                
+                document.querySelectorAll('.team-filter').forEach(btn => 
+                    btn.classList.toggle('active', btn.dataset.teamName === teamName)
+                );
+                
+                this.elements.chatArea.innerHTML = '';
+                this._addBotMessage(`Filtro aplicado: ${teamName}. Como posso ajudar?`);
+
+                if (this.state.isSearchMode) {
+                    this._populateKbList();
+                }
+            }
+            
+            _initSearchEngine() {
+                this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4 });
+            }
+
+            async _submitQuestionToForm(question) {
+                if (!question) return;
+                const formData = new FormData();
+                formData.append('entry.2126538361', question); // Este entry ID pode precisar ser ajustado se o formulário mudar
+                try {
+                    await fetch(this.config.SUGGESTION_FORM_URL, { method: 'POST', mode: 'no-cors', body: formData });
+                    this._addBotMessage("Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe.");
+                } catch (error) {
+                    console.error("Erro ao enviar pergunta:", error);
+                    this._addBotMessage("Houve um erro ao enviar sua pergunta.");
+                }
+                this.state.lastUnansweredQuestion = null;
+            }
+            
+            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Filtro atual: ${this.state.activeTeamFilter}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData();break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
             _addUserMessage(text){this._addMessage(text,'user');}
             _addBotMessage(text,options=[]){this._removeTypingIndicator();this._addMessage(text,'bot',options);}
             _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}
             _updateStatus(text,status){this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
+            _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
+            
+            // Funções de DB e inicialização de modelo, raramente precisam mudar
+            async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 3); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
             async _checkAdvancedModeStatus(){const useAdvancedMode=await this._getFromDatabase(this.config.MODEL_KEY);if(useAdvancedMode){this.state.isAdvancedMode=true;this.elements.advancedModeToggle.checked=true;this._startModelLoading();}}
             async _startModelLoading(){if(this.state.isModelLoading||this.state.isModelLoaded)return;this.state.isModelLoading=true;try{this.state.useModel=await use.load();this.state.isModelLoaded=true;this._addBotMessage("✅ O Modo Avançado está ativo!");}catch(error){console.error("Erro ao carregar modelo USE:",error);this.state.isAdvancedMode=false;this.elements.advancedModeToggle.checked=false;this._saveToDatabase(false,this.config.MODEL_KEY);this._addBotMessage("❌ Falha ao carregar o Modo Avançado.");}finally{this.state.isModelLoading=false;}}
-            async _loadFromDatabase(){const data=await this._getFromDatabase(this.config.DATA_KEY)||[];const hash=await this._getFromDatabase(this.config.LAST_UPDATE_KEY)||"";return{data,hash};}
             async _saveToDatabase(value,key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readwrite');tx.objectStore(this.config.STORE_NAME).put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
             async _getFromDatabase(key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readonly');const request=tx.objectStore(this.config.STORE_NAME).get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
-            _hashString(str){let hash=0;for(let i=0;i<str.length;i++){const char=str.charCodeAt(i);hash=(hash<<5)-hash+char;hash|=0;}return hash.toString();}
-            _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
-            _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
+            _processQuery(text) { if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, ''); let doc = nlp(text); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
+             _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
         }
         document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });
     </script>

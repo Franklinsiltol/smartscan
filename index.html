@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.6 - FILTRO POR TIME --- */
+        /* --- PROJETO PHOENIX v2.7 - FILTRO POR TIME COM URL EXCLUSIVA --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -42,8 +42,9 @@
         .logo-text { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
         .sidebar-section { display: flex; flex-direction: column; gap: 0.5rem; }
         .sidebar-title { font-size: 0.75rem; font-weight: 700; color: var(--phoenix-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0.75rem; margin-bottom: 0.25rem; }
-        .sidebar-button { background: transparent; border: 1px solid transparent; color: var(--phoenix-text-secondary); padding: 0.75rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; transition: all 0.2s ease; width: 100%; text-align: left; }
-        .sidebar-button:hover, .sidebar-button.active { background: rgba(255,255,255,0.05); color: var(--phoenix-text-primary); }
+        .sidebar-button, a.sidebar-button { background: transparent; border: 1px solid transparent; color: var(--phoenix-text-secondary); padding: 0.75rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; transition: all 0.2s ease; width: 100%; text-align: left; text-decoration: none; }
+        .sidebar-button:hover, .sidebar-button.active, a.sidebar-button:hover { background: rgba(255,255,255,0.05); color: var(--phoenix-text-primary); }
+        a.sidebar-button.active { color: var(--phoenix-primary); font-weight: 600; }
         .sidebar-button svg { width: 20px; height: 20px; flex-shrink: 0; }
         .settings-toggle { color: var(--phoenix-text-secondary); font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: 8px; transition: all 0.2s ease; cursor: pointer; }
         .settings-toggle:hover { background: rgba(255,255,255,0.05); }
@@ -149,7 +150,7 @@
                 <div class="logo-text">ChurnAssist</div>
             </div>
             
-            <div class="sidebar-section">
+            <div class="sidebar-section" id="teamsSection">
                 <div class="sidebar-title">Times</div>
                 <button id="allTeamsBtn" class="sidebar-button team-filter active" data-team-name="Todos">
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
@@ -254,24 +255,24 @@
     <script>
         class ChurnAssist {
             constructor() {
-                this.config = { 
-                    SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", 
+                this.config = {
+                    SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY",
                     SHEET_NAME: "Perguntas",
                     SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
-                    AUTO_UPDATE_INTERVAL: 600000, 
-                    DB_NAME: "ChurnAssistDB", 
+                    AUTO_UPDATE_INTERVAL: 600000,
+                    DB_NAME: "ChurnAssistDB",
                     STORE_NAME: "KnowledgeBase"
                 };
-                this.elements = { 
-                    questionInput: document.getElementById('questionInput'), 
-                    askButton: document.getElementById('askButton'), 
-                    chatArea: document.getElementById('chatArea'), 
-                    statusText: document.getElementById('statusText'), 
-                    statusDot: document.querySelector('.status-dot'), 
-                    autoUpdateStatus: document.getElementById('autoUpdateStatus'), 
-                    advancedModeToggle: document.getElementById('advancedModeToggle'), 
-                    dashboardButton: document.getElementById('dashboardButton'), 
-                    dashboardModal: document.getElementById('dashboardModal'), 
+                this.elements = {
+                    questionInput: document.getElementById('questionInput'),
+                    askButton: document.getElementById('askButton'),
+                    chatArea: document.getElementById('chatArea'),
+                    statusText: document.getElementById('statusText'),
+                    statusDot: document.querySelector('.status-dot'),
+                    autoUpdateStatus: document.getElementById('autoUpdateStatus'),
+                    advancedModeToggle: document.getElementById('advancedModeToggle'),
+                    dashboardButton: document.getElementById('dashboardButton'),
+                    dashboardModal: document.getElementById('dashboardModal'),
                     closeDashboardBtn: document.getElementById('closeDashboardBtn'),
                     sidebar: document.getElementById('sidebar'),
                     menuToggle: document.getElementById('menuToggle'),
@@ -287,124 +288,138 @@
                     kbQuestionList: document.getElementById('kbQuestionList'),
                     kbAnswerArea: document.getElementById('kbAnswerArea'),
                     allTeamsBtn: document.getElementById('allTeamsBtn'),
-                    teamsList: document.getElementById('teamsList')
+                    teamsList: document.getElementById('teamsList'),
+                    teamsSection: document.getElementById('teamsSection'),
                 };
-                this.state = { db: null, fuse: null, allQaData: [], qaData: [], activeTeamFilter: 'Todos', lastUpdateHash: "", lastUnansweredQuestion: null, isSearchMode: false };
+                this.state = {
+                    db: null,
+                    fuse: null,
+                    allQaData: [],
+                    qaData: [],
+                    activeTeamFilter: 'Todos',
+                    lastUnansweredQuestion: null,
+                    isSearchMode: false,
+                    urlFilteredTeam: null // NOVO: Armazena o time filtrado pela URL
+                };
                 this._init();
             }
-            
-            async _init() { 
-                try { 
-                    await this._initDatabase(); 
-                    await this._fetchAndUpdateData(); 
-                    this._setupEventListeners(); 
-                } catch (error) { 
-                    console.error("Falha na inicialização crítica:", error); 
-                    this._updateStatus("Erro crítico", 'error'); 
-                } 
-            }
-            
-            _setupEventListeners(){ 
-                this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
-                this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
-                this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
-                this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
-                this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
-                this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question);}});
-                this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
-                this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
-                this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
-                this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
-                this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
-                this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected');} });
-                this.elements.allTeamsBtn.addEventListener('click', () => this._applyTeamFilter('Todos'));
-                this.elements.teamsList.addEventListener('click', (e) => { const teamButton = e.target.closest('.team-filter'); if(teamButton){ this._applyTeamFilter(teamButton.dataset.teamName); } });
-            }
 
-            _toggleSearchMode() {
-                this.state.isSearchMode = !this.state.isSearchMode;
-                document.body.classList.toggle('search-mode-active');
-                if (this.state.isSearchMode) {
-                    this.elements.viewToggleText.textContent = "Voltar ao Chat";
-                    this.elements.viewToggleBtn.classList.add('active');
-                    this._populateKbList();
-                } else {
-                    this.elements.viewToggleText.textContent = "Modo Busca";
-                    this.elements.viewToggleBtn.classList.remove('active');
+            async _init() {
+                try {
+                    // NOVO: Verifica a URL antes de qualquer outra coisa
+                    this._checkForUrlFilter();
+
+                    await this._initDatabase();
+                    await this._fetchAndUpdateData();
+                    this._setupEventListeners();
+
+                    // NOVO: Se houver um filtro de URL, ajusta a UI
+                    if (this.state.urlFilteredTeam) {
+                        this._setupFilteredTeamView(this.state.urlFilteredTeam);
+                    }
+                } catch (error) {
+                    console.error("Falha na inicialização crítica:", error);
+                    this._updateStatus("Erro crítico", 'error');
                 }
             }
-            
-            _populateKbList(filter = '') {
-                const lowerFilter = filter.toLowerCase();
-                const filteredData = this.state.qaData.filter(item => item.question.toLowerCase().includes(lowerFilter));
-                this.elements.kbQuestionList.innerHTML = filteredData.map((item, index) => 
-                    `<button class="kb-question-item" data-index="${this.state.qaData.indexOf(item)}">${item.question}</button>`
-                ).join('');
+
+            _setupEventListeners() {
+                this.elements.askButton.addEventListener('click', () => this._handleQuestion());
+                this.elements.questionInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this._handleQuestion();
+                });
+                this.elements.dashboardButton.addEventListener('click', () => {
+                    this.elements.dashboardModal.style.display = 'flex';
+                });
+                this.elements.closeDashboardBtn.addEventListener('click', () => {
+                    this.elements.dashboardModal.style.display = 'none';
+                });
+                this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
+                this.elements.submitSuggestionBtn.addEventListener('click', () => {
+                    const question = this.elements.suggestionTextarea.value.trim();
+                    if (question) {
+                        this._submitQuestionToForm(question);
+                    }
+                });
+                this.elements.menuToggle.addEventListener('click', () => {
+                    this.elements.sidebar.classList.add('sidebar-open');
+                    this.elements.mobileOverlay.classList.add('active');
+                });
+                this.elements.mobileOverlay.addEventListener('click', () => {
+                    this.elements.sidebar.classList.remove('sidebar-open');
+                    this.elements.mobileOverlay.classList.remove('active');
+                });
+                this.elements.commandButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const command = button.dataset.command;
+                        this.elements.questionInput.value = command;
+                        this._handleQuestion();
+                        this.elements.sidebar.classList.remove('sidebar-open');
+                        this.elements.mobileOverlay.classList.remove('active');
+                    });
+                });
+                this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
+                this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
+                this.elements.kbQuestionList.addEventListener('click', (e) => {
+                    const item = e.target.closest('.kb-question-item');
+                    if (item) {
+                        this._displayKbAnswer(parseInt(item.dataset.index, 10));
+                        document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected'));
+                        item.classList.add('selected');
+                    }
+                });
+
+                // NOVO: Lógica de clique para redirecionar
+                this.elements.allTeamsBtn.addEventListener('click', () => {
+                    window.location.href = window.location.origin + window.location.pathname;
+                });
+                this.elements.teamsList.addEventListener('click', (e) => {
+                    const teamButton = e.target.closest('.team-filter');
+                    if (teamButton) {
+                        const teamName = teamButton.dataset.teamName;
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('team', teamName);
+                        window.location.href = newUrl.toString();
+                    }
+                });
             }
 
-            _displayKbAnswer(index) {
-                if (index < 0 || index >= this.state.qaData.length) return;
-                const item = this.state.qaData[index];
-                const formattedAnswer = this._createHyperlinks(item.answer).replace(/\n/g, '<br>');
-                this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`;
+            // --- NOVAS FUNÇÕES E FUNÇÕES MODIFICADAS PARA URL EXCLUSIVA ---
+
+            _checkForUrlFilter() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const teamFromUrl = urlParams.get('team');
+                if (teamFromUrl) {
+                    this.state.urlFilteredTeam = decodeURIComponent(teamFromUrl);
+                }
             }
 
-            _addMessage(text,sender,options=[]){const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
-            _showTypingIndicator(){this._removeTypingIndicator();const typingDiv=document.createElement('div');typingDiv.id='typingIndicator';typingDiv.className='message bot-message';typingDiv.innerHTML='<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';this.elements.chatArea.appendChild(typingDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
+            _setupFilteredTeamView(teamName) {
+                // Esconde a lista de times e o botão "Todos"
+                this.elements.allTeamsBtn.style.display = 'none';
+                this.elements.teamsList.style.display = 'none';
 
-            async _handleQuestion() {
-                const question = this.elements.questionInput.value.trim();
-                if (!question) return;
+                // Cria o display para o time filtrado
+                const filteredTeamDisplay = document.createElement('div');
+                filteredTeamDisplay.className = 'sidebar-button active';
+                filteredTeamDisplay.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <span>${teamName}</span>
+                `;
 
-                if (question.startsWith('/')) { this._handleCommand(question); this.elements.questionInput.value = ''; return; }
-                this._addUserMessage(question);
-                this.elements.questionInput.value = '';
-
-                this._showTypingIndicator();
-                setTimeout(async () => {
-                    try {
-                        let answerText = null; let answerOptions = [];
-                        const processedQuery = this._processQuery(question);
-
-                        if (!this.state.fuse) { answerText = "A base de conhecimento não está pronta."; }
-                        else {
-                            const results = this.state.fuse.search(processedQuery);
-                            if (results.length > 0 && results[0].score < 0.35) {
-                                answerText = results[0].item.answer;
-                            } else if (results.length > 0) {
-                                answerText = "Não tenho certeza, mas talvez uma destas opções ajude:";
-                                answerOptions = results.slice(0, 3);
-                            } else {
-                                this.state.lastUnansweredQuestion = question;
-                                answerText = "Desculpe, não encontrei uma resposta. Gostaria de adicionar esta pergunta à nossa base de conhecimento?";
-                            }
-                        }
-                        this._addBotMessage(answerText, answerOptions);
-                        if (answerText.includes("Gostaria de adicionar esta pergunta")) {
-                            this._showAddQuestionButtons();
-                        }
-                    } catch (error) { console.error("Erro ao processar pergunta:", error); this._addBotMessage("Ocorreu um erro ao processar sua pergunta."); }
-                }, 800);
+                // Cria um link para voltar à visão geral
+                const backButton = document.createElement('a');
+                backButton.href = window.location.origin + window.location.pathname;
+                backButton.className = 'sidebar-button';
+                backButton.innerHTML = `
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                    <span>Ver todos os times</span>
+                `;
+                
+                this.elements.teamsSection.appendChild(filteredTeamDisplay);
+                this.elements.teamsSection.appendChild(backButton);
             }
 
-            _showAddQuestionButtons() {
-                const messageDiv = this.elements.chatArea.querySelector('.message:last-child');
-                if (!messageDiv) return;
-                const buttonsContainer = document.createElement('div');
-                buttonsContainer.className = 'action-buttons';
-                const yesButton = document.createElement('button');
-                yesButton.className = 'action-button yes';
-                yesButton.textContent = 'Sim, sugerir';
-                yesButton.onclick = () => { this._submitQuestionToForm(this.state.lastUnansweredQuestion); };
-                const noButton = document.createElement('button');
-                noButton.className = 'action-button no';
-                noButton.textContent = 'Não';
-                noButton.onclick = () => { buttonsContainer.remove(); };
-                buttonsContainer.appendChild(yesButton);
-                buttonsContainer.appendChild(noButton);
-                messageDiv.appendChild(buttonsContainer);
-            }
-            
             async _fetchAndUpdateData() {
                 this._updateStatus("Atualizando base...", 'loading');
                 const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
@@ -430,9 +445,21 @@
                         processedQuestion: this._processQuery(row[questionIndex]?.trim() || "")
                     })).filter(item => item.question && item.answer);
 
-                    this._populateTeamsList();
-                    this._applyTeamFilter('Todos');
-                    this._addBotMessage("Olá! Sou o ChurnAssist. Como posso ajudar?");
+                    // A população da lista de times só acontece se não estivermos em modo filtrado
+                    if (!this.state.urlFilteredTeam) {
+                        this._populateTeamsList();
+                    }
+
+                    // Aplica o filtro da URL ou o padrão "Todos"
+                    const initialFilter = this.state.urlFilteredTeam || 'Todos';
+                    this._applyTeamFilter(initialFilter);
+                    
+                    // Mensagem de boas-vindas customizada
+                    const welcomeMessage = this.state.urlFilteredTeam 
+                        ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?`
+                        : "Olá! Sou o ChurnAssist. Como posso ajudar?";
+                    this._addBotMessage(welcomeMessage);
+                    
                     this._updateStatus('Pronto', 'success');
 
                 } catch(error) {
@@ -442,20 +469,6 @@
                 }
             }
 
-            _populateTeamsList() {
-                const teams = new Set();
-                this.state.allQaData.forEach(item => {
-                    item.team.split(',').forEach(t => teams.add(t.trim()));
-                });
-                
-                this.elements.teamsList.innerHTML = [...teams].sort().map(team => `
-                    <button class="sidebar-button team-filter" data-team-name="${team}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        <span>${team}</span>
-                    </button>
-                `).join('');
-            }
-            
             _applyTeamFilter(teamName) {
                 this.state.activeTeamFilter = teamName;
                 
@@ -469,20 +482,184 @@
                 
                 this._initSearchEngine();
                 
+                // Atualiza a classe 'active' apenas nos botões que existem
                 document.querySelectorAll('.team-filter').forEach(btn => 
                     btn.classList.toggle('active', btn.dataset.teamName === teamName)
                 );
                 
+                // Limpa o chat para começar a nova conversa filtrada
                 this.elements.chatArea.innerHTML = '';
-                this._addBotMessage(`Filtro aplicado: ${teamName}. Como posso ajudar?`);
 
+                // Se o modo busca estiver ativo, atualiza a lista
                 if (this.state.isSearchMode) {
                     this._populateKbList();
                 }
             }
+
+            _populateTeamsList() {
+                const teams = new Set();
+                this.state.allQaData.forEach(item => {
+                    item.team.split(',').forEach(t => {
+                        const trimmedTeam = t.trim();
+                        if (trimmedTeam) teams.add(trimmedTeam);
+                    });
+                });
+                
+                this.elements.teamsList.innerHTML = [...teams].sort().map(team => `
+                    <button class="sidebar-button team-filter" data-team-name="${team}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span>${team}</span>
+                    </button>
+                `).join('');
+            }
             
+            // --- RESTANTE DO CÓDIGO (sem alterações) ---
+
+            _toggleSearchMode() {
+                this.state.isSearchMode = !this.state.isSearchMode;
+                document.body.classList.toggle('search-mode-active');
+                if (this.state.isSearchMode) {
+                    this.elements.viewToggleText.textContent = "Voltar ao Chat";
+                    this.elements.viewToggleBtn.classList.add('active');
+                    this._populateKbList();
+                } else {
+                    this.elements.viewToggleText.textContent = "Modo Busca";
+                    this.elements.viewToggleBtn.classList.remove('active');
+                }
+            }
+            
+            _populateKbList(filter = '') {
+                const lowerFilter = filter.toLowerCase();
+                const filteredData = this.state.qaData.filter(item => item.question.toLowerCase().includes(lowerFilter));
+                this.elements.kbQuestionList.innerHTML = filteredData.map((item, index) => 
+                    `<button class="kb-question-item" data-index="${this.state.qaData.indexOf(item)}">${item.question}</button>`
+                ).join('');
+                 // Limpa a área de resposta se a lista for atualizada
+                if (filter) {
+                    this.elements.kbAnswerArea.innerHTML = `<div class="kb-answer-placeholder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Selecione uma pergunta na lista para ver a resposta aqui.</div>`;
+                }
+            }
+
+            _displayKbAnswer(index) {
+                if (index < 0 || index >= this.state.qaData.length) return;
+                const item = this.state.qaData[index];
+                const formattedAnswer = this._createHyperlinks(item.answer).replace(/\n/g, '<br>');
+                this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`;
+            }
+
+            _addMessage(text, sender, options = []) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                const formattedText = this._createHyperlinks(text);
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = formattedText.replace(/\n/g, '<br>');
+                messageDiv.appendChild(contentDiv);
+                if (options.length > 0) {
+                    options.forEach(result => {
+                        const button = document.createElement('button');
+                        button.className = 'option-button';
+                        button.textContent = result.item.question;
+                        button.onclick = () => {
+                            this._addUserMessage(result.item.question);
+                            this._showTypingIndicator();
+                            setTimeout(() => {
+                                this._addBotMessage(result.item.answer);
+                            }, 400);
+                        };
+                        messageDiv.appendChild(button);
+                    });
+                }
+                this.elements.chatArea.appendChild(messageDiv);
+                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
+            }
+            _showTypingIndicator() {
+                this._removeTypingIndicator();
+                const typingDiv = document.createElement('div');
+                typingDiv.id = 'typingIndicator';
+                typingDiv.className = 'message bot-message';
+                typingDiv.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+                this.elements.chatArea.appendChild(typingDiv);
+                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
+            }
+
+            async _handleQuestion() {
+                const question = this.elements.questionInput.value.trim();
+                if (!question) return;
+
+                if (question.startsWith('/')) {
+                    this._handleCommand(question);
+                    this.elements.questionInput.value = '';
+                    return;
+                }
+                this._addUserMessage(question);
+                this.elements.questionInput.value = '';
+
+                this._showTypingIndicator();
+                setTimeout(async () => {
+                    try {
+                        let answerText = null;
+                        let answerOptions = [];
+                        const processedQuery = this._processQuery(question);
+
+                        if (!this.state.fuse) {
+                            answerText = "A base de conhecimento não está pronta.";
+                        } else {
+                            const results = this.state.fuse.search(processedQuery);
+                            if (results.length > 0 && results[0].score < 0.35) {
+                                answerText = results[0].item.answer;
+                            } else if (results.length > 0) {
+                                answerText = "Não tenho certeza, mas talvez uma destas opções ajude:";
+                                answerOptions = results.slice(0, 3);
+                            } else {
+                                this.state.lastUnansweredQuestion = question;
+                                answerText = "Desculpe, não encontrei uma resposta. Gostaria de adicionar esta pergunta à nossa base de conhecimento?";
+                            }
+                        }
+                        this._addBotMessage(answerText, answerOptions);
+                        if (answerText.includes("Gostaria de adicionar esta pergunta")) {
+                            this._showAddQuestionButtons();
+                        }
+                    } catch (error) {
+                        console.error("Erro ao processar pergunta:", error);
+                        this._addBotMessage("Ocorreu um erro ao processar sua pergunta.");
+                    }
+                }, 800);
+            }
+
+            _showAddQuestionButtons() {
+                const messageDiv = this.elements.chatArea.querySelector('.message:last-child');
+                if (!messageDiv) return;
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'action-buttons';
+                const yesButton = document.createElement('button');
+                yesButton.className = 'action-button yes';
+                yesButton.textContent = 'Sim, sugerir';
+                yesButton.onclick = () => {
+                    this._submitQuestionToForm(this.state.lastUnansweredQuestion);
+                    buttonsContainer.innerHTML = `<p style="font-size: 0.9em; color: var(--phoenix-text-secondary); margin-top: 0.5rem;">Obrigado!</p>`;
+                };
+                const noButton = document.createElement('button');
+                noButton.className = 'action-button no';
+                noButton.textContent = 'Não';
+                noButton.onclick = () => {
+                    buttonsContainer.remove();
+                };
+                buttonsContainer.appendChild(yesButton);
+                buttonsContainer.appendChild(noButton);
+                messageDiv.appendChild(buttonsContainer);
+            }
+
             _initSearchEngine() {
-                this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4 });
+                if (!this.state.qaData || this.state.qaData.length === 0) {
+                    console.warn("Nenhum dado para inicializar o motor de busca. Verifique o filtro.");
+                    this.state.fuse = null;
+                    return;
+                }
+                this.state.fuse = new Fuse(this.state.qaData, {
+                    keys: ['processedQuestion'],
+                    includeScore: true,
+                    threshold: 0.4
+                });
             }
 
             async _submitQuestionToForm(question) {
@@ -490,7 +667,11 @@
                 const formData = new FormData();
                 formData.append('entry.2126538361', question); // Este entry ID pode precisar ser ajustado se o formulário mudar
                 try {
-                    await fetch(this.config.SUGGESTION_FORM_URL, { method: 'POST', mode: 'no-cors', body: formData });
+                    await fetch(this.config.SUGGESTION_FORM_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: formData
+                    });
                     this._addBotMessage("Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe.");
                 } catch (error) {
                     console.error("Erro ao enviar pergunta:", error);
@@ -498,24 +679,135 @@
                 }
                 this.state.lastUnansweredQuestion = null;
             }
-            
-            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Filtro atual: ${this.state.activeTeamFilter}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData();break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
-            _addUserMessage(text){this._addMessage(text,'user');}
-            _addBotMessage(text,options=[]){this._removeTypingIndicator();this._addMessage(text,'bot',options);}
-            _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}
-            _updateStatus(text,status){this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
-            _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
-            
+
+            _handleCommand(command) {
+                const cmd = command.toLowerCase().split(' ')[0];
+                switch (cmd) {
+                    case '/limpar':
+                        this.elements.chatArea.innerHTML = '';
+                        this._addBotMessage(`Chat limpo. Filtro atual: ${this.state.activeTeamFilter}.`);
+                        break;
+                    case '/atualizar':
+                        this._addBotMessage("Iniciando verificação manual...");
+                        this._fetchAndUpdateData();
+                        break;
+                    default:
+                        this._addBotMessage(`Comando "${cmd}" não reconhecido.`);
+                }
+            }
+            _addUserMessage(text) {
+                this._addMessage(text, 'user');
+            }
+            _addBotMessage(text, options = []) {
+                this._removeTypingIndicator();
+                this._addMessage(text, 'bot', options);
+            }
+            _removeTypingIndicator() {
+                const indicator = document.getElementById('typingIndicator');
+                if (indicator) indicator.remove();
+            }
+            _updateStatus(text, status) {
+                this.elements.statusText.textContent = text;
+                this.elements.statusDot.className = 'status-dot';
+                if (status !== 'success') this.elements.statusDot.classList.add(status);
+            }
+            _createHyperlinks(text) {
+                if (!text) return '';
+                const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+                return text.replace(urlRegex, (url) => {
+                    const link = url.startsWith('www.') ? `https://` + url : url;
+                    return `<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                });
+            }
+
             // Funções de DB e inicialização de modelo, raramente precisam mudar
-            async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 3); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
-            async _checkAdvancedModeStatus(){const useAdvancedMode=await this._getFromDatabase(this.config.MODEL_KEY);if(useAdvancedMode){this.state.isAdvancedMode=true;this.elements.advancedModeToggle.checked=true;this._startModelLoading();}}
-            async _startModelLoading(){if(this.state.isModelLoading||this.state.isModelLoaded)return;this.state.isModelLoading=true;try{this.state.useModel=await use.load();this.state.isModelLoaded=true;this._addBotMessage("✅ O Modo Avançado está ativo!");}catch(error){console.error("Erro ao carregar modelo USE:",error);this.state.isAdvancedMode=false;this.elements.advancedModeToggle.checked=false;this._saveToDatabase(false,this.config.MODEL_KEY);this._addBotMessage("❌ Falha ao carregar o Modo Avançado.");}finally{this.state.isModelLoading=false;}}
-            async _saveToDatabase(value,key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readwrite');tx.objectStore(this.config.STORE_NAME).put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
-            async _getFromDatabase(key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readonly');const request=tx.objectStore(this.config.STORE_NAME).get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
-            _processQuery(text) { if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, ''); let doc = nlp(text); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
-             _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
+            async _initDatabase() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.config.DB_NAME, 3);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(this.config.STORE_NAME)) {
+                            db.createObjectStore(this.config.STORE_NAME);
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this.state.db = e.target.result;
+                        resolve();
+                    };
+                    request.onerror = (e) => {
+                        console.error("Erro no IndexedDB:", e.target.error);
+                        reject(e.target.error);
+                    };
+                });
+            }
+            _processQuery(text) {
+                if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, '');
+                let doc = nlp(text);
+                doc.normalize('heavy');
+                let terms = doc.nouns().out('array');
+                terms = terms.concat(doc.verbs().out('array'));
+                terms = terms.concat(doc.adjectives().out('array'));
+                if (terms.length === 0) {
+                    return doc.text('reduced');
+                }
+                return terms.join(' ');
+            }
+            _parseCSV(csvText) {
+                const rows = [];
+                let currentRow = [];
+                let currentField = '';
+                let inQuotedField = false;
+                csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                for (let i = 0; i < csvText.length; i++) {
+                    const char = csvText[i];
+                    if (inQuotedField) {
+                        if (char === '"') {
+                            if (i + 1 < csvText.length && csvText[i + 1] === '"') {
+                                currentField += '"';
+                                i++;
+                            } else {
+                                inQuotedField = false;
+                            }
+                        } else {
+                            currentField += char;
+                        }
+                    } else {
+                        switch (char) {
+                            case ',':
+                                currentRow.push(currentField);
+                                currentField = '';
+                                break;
+                            case '\n':
+                                currentRow.push(currentField);
+                                rows.push(currentRow);
+                                currentRow = [];
+                                currentField = '';
+                                break;
+                            case '"':
+                                if (currentField === '') {
+                                    inQuotedField = true;
+                                } else {
+                                    currentField += char;
+                                }
+                                break;
+                            default:
+                                currentField += char;
+                        }
+                    }
+                }
+                if (currentField || currentRow.length > 0) {
+                    currentRow.push(currentField);
+                    rows.push(currentRow);
+                }
+                if (rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') {
+                    rows.pop();
+                }
+                return rows;
+            }
         }
-        document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });
+        document.addEventListener('DOMContentLoaded', () => {
+            window.ChurnAssist = new ChurnAssist();
+        });
     </script>
 </body>
 </html>

@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.8 - LAYOUT FIXO --- */
+        /* --- PROJETO PHOENIX v2.9 - NOTIFICAÇÕES REINTEGRADAS --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -67,16 +67,9 @@
         .status-dot.loading { background-color: #F7B731; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
-        /* --- AJUSTE DE LAYOUT --- */
-        .chat-view-content {
-            flex-grow: 1; /* Garante que este elemento ocupe o espaço restante na vertical */
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* Impede que este container transborde e empurre o input */
-        }
+        .chat-view-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-area { flex-grow: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
-        /* --- FIM DO AJUSTE --- */
 
         .message { max-width: 70%; padding: 1rem 1.25rem; border-radius: 16px; line-height: 1.6; position: relative; animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); word-wrap: break-word; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -90,6 +83,30 @@
         .typing-dot:nth-child(1) { animation-delay: 0s; } .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes typingAnimation { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
         
+        /* NOVO ESTILO PARA A MENSAGEM DE NOTIFICAÇÃO */
+        .notification-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            background: var(--phoenix-surface);
+            border: 1px solid var(--phoenix-border);
+            border-left: 4px solid var(--phoenix-primary);
+            color: var(--phoenix-text-primary);
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            animation: fadeIn 0.5s ease-out;
+            max-width: 75%;
+            margin-right: auto;
+            word-wrap: break-word;
+        }
+        .notification-message svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin-top: 2px;
+            color: var(--phoenix-primary);
+        }
+
         .action-buttons { margin-top: 1rem; display: flex; gap: 0.75rem; }
         .action-button { display: inline-block; padding: 0.5rem 1rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.9rem; text-align: center; cursor: pointer; transition: all 0.2s; border: none; font-weight: 600; }
         .action-button.yes { background-color: var(--phoenix-green); color: #fff; }
@@ -130,7 +147,6 @@
         .dashboard-modal-content iframe { width: 100%; height: 100%; border: none; }
         #closeDashboardBtn { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 48px; height: 48px; background-color: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--phoenix-border); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1001; transition: all 0.2s ease; backdrop-filter: blur(5px); }
         #closeDashboardBtn:hover { transform: translateX(-50%) scale(1.1); background-color: rgba(0,0,0,0.8); }
-        .notification-banner { background-color: var(--phoenix-surface); border-left: 4px solid var(--phoenix-primary); padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 8px; animation: slideIn 0.3s ease-out; font-size: 0.9rem; }
         
         .sidebar::-webkit-scrollbar, .chat-area::-webkit-scrollbar, .kb-questions::-webkit-scrollbar, .kb-answer::-webkit-scrollbar { width: 8px; height: 8px; }
         .sidebar::-webkit-scrollbar-track, .chat-area::-webkit-scrollbar-track, .kb-questions::-webkit-scrollbar-track, .kb-answer::-webkit-scrollbar-track { background: transparent; }
@@ -266,6 +282,7 @@
                 this.config = {
                     SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY",
                     SHEET_NAME: "Perguntas",
+                    NOTIFICATION_SHEET_NAME: "Notificações", // NOME DA ABA DE NOTIFICAÇÕES
                     SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
                     AUTO_UPDATE_INTERVAL: 600000,
                     DB_NAME: "ChurnAssistDB",
@@ -327,7 +344,7 @@
                     this._updateStatus("Erro crítico", 'error');
                 }
             }
-
+            
             _setupEventListeners() {
                 this.elements.askButton.addEventListener('click', () => this._handleQuestion());
                 this.elements.questionInput.addEventListener('keypress', (e) => {
@@ -418,9 +435,56 @@
                 this.elements.teamsSection.appendChild(filteredTeamDisplay);
                 this.elements.teamsSection.appendChild(backButton);
             }
+            
+            // FUNÇÃO DE NOTIFICAÇÃO (INÍCIO)
+            _addNotificationMessage(text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'notification-message';
+                const formattedText = this._createHyperlinks(text).replace(/\n/g, '<br>');
 
-            async _fetchAndUpdateData() {
-                this._updateStatus("Atualizando base...", 'loading');
+                // Ícone de "Informação"
+                messageDiv.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                    <div>${formattedText}</div>
+                `;
+
+                this.elements.chatArea.appendChild(messageDiv);
+                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
+            }
+
+            async _fetchAndDisplayNotification() {
+                const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET_NAME)}&t=${Date.now()}`;
+                try {
+                    const response = await fetch(url);
+                    // Falha silenciosamente se a aba não existir
+                    if (!response.ok) {
+                        console.warn(`Aba de notificações "${this.config.NOTIFICATION_SHEET_NAME}" não encontrada.`);
+                        return;
+                    }
+                    const csvText = await response.text();
+                    // Não faz nada se a aba estiver vazia
+                    if (!csvText.trim()) return;
+
+                    const parsedData = this._parseCSV(csvText);
+                    // Pega a mensagem da primeira célula (A1)
+                    const notificationMessage = parsedData?.[0]?.[0]?.trim();
+
+                    if (notificationMessage) {
+                        this._addNotificationMessage(notificationMessage);
+                    }
+                } catch (error) {
+                    console.error("Não foi possível buscar a notificação:", error);
+                }
+            }
+            // FUNÇÃO DE NOTIFICAÇÃO (FIM)
+
+            async _fetchAndUpdateData(isManualUpdate = false) {
+                if (!isManualUpdate) {
+                    this._updateStatus("Atualizando base...", 'loading');
+                }
+                
                 const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
                 try {
                     const response = await fetch(url);
@@ -451,10 +515,14 @@
                     const initialFilter = this.state.urlFilteredTeam || 'Todos';
                     this._applyTeamFilter(initialFilter);
                     
-                    const welcomeMessage = this.state.urlFilteredTeam 
-                        ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?`
-                        : "Olá! Sou o ChurnAssist. Como posso ajudar?";
-                    this._addBotMessage(welcomeMessage);
+                    if (!isManualUpdate) {
+                        const welcomeMessage = this.state.urlFilteredTeam 
+                            ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?`
+                            : "Olá! Sou o ChurnAssist. Como posso ajudar?";
+                        this._addBotMessage(welcomeMessage);
+                        // Chama a função de notificação após a mensagem de boas-vindas
+                        await this._fetchAndDisplayNotification();
+                    }
                     
                     this._updateStatus('Pronto', 'success');
 
@@ -679,7 +747,7 @@
                         break;
                     case '/atualizar':
                         this._addBotMessage("Iniciando verificação manual...");
-                        this._fetchAndUpdateData();
+                        this._fetchAndUpdateData(true);
                         break;
                     default:
                         this._addBotMessage(`Comando "${cmd}" não reconhecido.`);

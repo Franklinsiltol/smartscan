@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v3.0 - URL DIRECTORY FINAL --- */
+        /* --- PROJETO PHOENIX v2.6 - FILTRO POR TIME --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -45,11 +45,18 @@
         .sidebar-button { background: transparent; border: 1px solid transparent; color: var(--phoenix-text-secondary); padding: 0.75rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; transition: all 0.2s ease; width: 100%; text-align: left; text-decoration: none; }
         .sidebar-button:hover, .sidebar-button.active { background: rgba(255,255,255,0.05); color: var(--phoenix-text-primary); }
         .sidebar-button svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .settings-toggle { color: var(--phoenix-text-secondary); font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: 8px; transition: all 0.2s ease; cursor: pointer; }
+        .settings-toggle:hover { background: rgba(255,255,255,0.05); }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--phoenix-surface); transition: .4s; border-radius: 22px; border: 1px solid var(--phoenix-border); }
+        .toggle-slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: var(--phoenix-secondary); transition: .4s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: var(--phoenix-primary); border-color: var(--phoenix-primary); }
+        input:checked + .toggle-slider:before { background-color: var(--phoenix-bg); transform: translateX(18px); }
         #suggestionForm { display: none; flex-direction: column; gap: 0.75rem; padding-top: 0.5rem; }
         #suggestionForm.active { display: flex; }
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
         #submitSuggestionBtn { background: var(--phoenix-primary); color: #fff; font-weight: 600; }
-        .scoped-view #teamsList { display: none; }
 
         .main-view { width: 100%; display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
@@ -84,7 +91,6 @@
         .input-area { display: flex; align-items: center; gap: 1rem; }
         #questionInput { flex-grow: 1; padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); font-family: 'Inter', sans-serif; font-size: 1rem; outline: none; transition: all 0.2s; }
         #questionInput:focus { border-color: var(--phoenix-primary); box-shadow: 0 0 0 3px var(--phoenix-primary-glow); }
-        #questionInput:disabled { background-color: rgba(34,39,46,0.4); cursor: not-allowed; }
         #askButton { background: var(--phoenix-primary); color: #fff; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; border: none; }
         .status-footer { padding-top: 1rem; font-size: 0.8rem; color: var(--phoenix-text-secondary); display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; }
         .status-footer svg { width: 14px; height: 14px; }
@@ -145,9 +151,11 @@
             
             <div id="teamsSection" class="sidebar-section">
                 <div class="sidebar-title">Times</div>
-                <div id="teamsListContainer">
-                    <!-- Links/info dos times serão inseridos aqui pelo JS -->
-                </div>
+                <button id="allTeamsBtn" class="sidebar-button team-filter active" data-team-name="Todos">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                    <span>Todos os Times</span>
+                </button>
+                <div id="teamsList"></div>
             </div>
 
             <div class="sidebar-section">
@@ -160,6 +168,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M13 13v8h8v-8h-8zM3 21h8v-8H3v8zM3 3v8h8V3H3zm13-1v10h-2V3h-2v10h-2V3h-2v10h-2V3H7v10H5V3H3v18h18V3h-2z"/></svg>
                     <span>Dashboard</span>
                 </button>
+                 <div class="settings-toggle">
+                    <span>Modo Avançado</span>
+                    <label class="toggle-switch"><input type="checkbox" id="advancedModeToggle"><span class="toggle-slider"></span></label>
+                </div>
             </div>
 
             <div class="sidebar-section">
@@ -275,10 +287,9 @@
                     this.state.activeTeam = urlParams.get('time');
                     
                     this._bindBaseElements();
-                    this._setupBaseEventListeners();
-                    
                     await this._fetchAndUpdateData(); 
                     this._setupView();
+                    this._setupBaseEventListeners();
                 } catch (error) { 
                     console.error("Falha na inicialização crítica:", error); 
                     if(this.elements.statusText) this._updateStatus("Erro crítico", 'error'); 
@@ -301,8 +312,7 @@
                     document.body.classList.add('scoped-view');
                     this._applyTeamFilter(this.state.activeTeam);
                     this._renderTemplate('chatTemplate');
-                    this._rebindDynamicElements();
-                    this._setupDynamicEventListeners();
+                    this._rebindAndSetupDynamicElements();
                     this._addBotMessage(`Olá! Sou o ChurnAssist. Conectado ao time: ${this.state.activeTeam}. Como posso ajudar?`);
                 } else {
                     this._renderTemplate('placeholderTemplate');
@@ -310,7 +320,7 @@
                 }
             }
 
-            _rebindDynamicElements() {
+            _rebindAndSetupDynamicElements() {
                 this.elements.questionInput = document.getElementById('questionInput'); 
                 this.elements.askButton = document.getElementById('askButton'); 
                 this.elements.chatArea = document.getElementById('chatArea'); 
@@ -326,6 +336,8 @@
                 this.elements.commandButtons = document.querySelectorAll('.command-button');
                 this.elements.viewToggleBtn = document.getElementById('viewToggleBtn');
                 this.elements.viewToggleText = document.getElementById('viewToggleText');
+
+                this._setupDynamicEventListeners();
             }
             
             _setupBaseEventListeners(){ 
@@ -369,7 +381,6 @@
                 } else {
                     this._renderTemplate('chatTemplate');
                     this._rebindDynamicElements();
-                    this._setupDynamicEventListeners();
                     this.elements.viewToggleText.textContent = "Modo Busca";
                     this.elements.viewToggleBtn.classList.remove('active');
                     this._addBotMessage(`Você está no modo Chat do time: ${this.state.activeTeam}.`);
@@ -516,13 +527,13 @@
                 this.state.lastUnansweredQuestion = null;
             }
             
-            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Contexto: ${this.state.activeTeam}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData().then(() => this._applyTeamFilter(this.state.activeTeam));break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
+            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Contexto: ${this.state.activeTeam}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData().then(() => {this._applyTeamFilter(this.state.activeTeam); this._addBotMessage("Base de conhecimento atualizada.");});break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
             _addUserMessage(text){this._addMessage(text,'user');}
             _addBotMessage(text,options=[]){this._removeTypingIndicator();this._addMessage(text,'bot',options);}
             _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}
             _updateStatus(text,status){if(!this.elements.statusText) return; this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
             _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
-             _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
+            _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
             _processQuery(text) { if (!text) return text.toLowerCase(); let doc = nlp(text.toLowerCase()); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
         }
         document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });

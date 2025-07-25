@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.7 - FILTRO POR TIME COM URL EXCLUSIVA --- */
+        /* --- PROJETO PHOENIX v2.8 - LAYOUT FIXO --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -67,9 +67,17 @@
         .status-dot.loading { background-color: #F7B731; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
-        .chat-view-content { height: 100%; display: flex; flex-direction: column; }
+        /* --- AJUSTE DE LAYOUT --- */
+        .chat-view-content {
+            flex-grow: 1; /* Garante que este elemento ocupe o espaço restante na vertical */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Impede que este container transborde e empurre o input */
+        }
         .chat-container { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .chat-area { flex-grow: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+        /* --- FIM DO AJUSTE --- */
+
         .message { max-width: 70%; padding: 1rem 1.25rem; border-radius: 16px; line-height: 1.6; position: relative; animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); word-wrap: break-word; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .user-message { background: var(--phoenix-primary); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
@@ -299,21 +307,18 @@
                     activeTeamFilter: 'Todos',
                     lastUnansweredQuestion: null,
                     isSearchMode: false,
-                    urlFilteredTeam: null // NOVO: Armazena o time filtrado pela URL
+                    urlFilteredTeam: null
                 };
                 this._init();
             }
 
             async _init() {
                 try {
-                    // NOVO: Verifica a URL antes de qualquer outra coisa
                     this._checkForUrlFilter();
-
                     await this._initDatabase();
                     await this._fetchAndUpdateData();
                     this._setupEventListeners();
 
-                    // NOVO: Se houver um filtro de URL, ajusta a UI
                     if (this.state.urlFilteredTeam) {
                         this._setupFilteredTeamView(this.state.urlFilteredTeam);
                     }
@@ -369,7 +374,6 @@
                     }
                 });
 
-                // NOVO: Lógica de clique para redirecionar
                 this.elements.allTeamsBtn.addEventListener('click', () => {
                     window.location.href = window.location.origin + window.location.pathname;
                 });
@@ -384,8 +388,6 @@
                 });
             }
 
-            // --- NOVAS FUNÇÕES E FUNÇÕES MODIFICADAS PARA URL EXCLUSIVA ---
-
             _checkForUrlFilter() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const teamFromUrl = urlParams.get('team');
@@ -395,11 +397,9 @@
             }
 
             _setupFilteredTeamView(teamName) {
-                // Esconde a lista de times e o botão "Todos"
                 this.elements.allTeamsBtn.style.display = 'none';
                 this.elements.teamsList.style.display = 'none';
 
-                // Cria o display para o time filtrado
                 const filteredTeamDisplay = document.createElement('div');
                 filteredTeamDisplay.className = 'sidebar-button active';
                 filteredTeamDisplay.innerHTML = `
@@ -407,7 +407,6 @@
                     <span>${teamName}</span>
                 `;
 
-                // Cria um link para voltar à visão geral
                 const backButton = document.createElement('a');
                 backButton.href = window.location.origin + window.location.pathname;
                 backButton.className = 'sidebar-button';
@@ -445,16 +444,13 @@
                         processedQuestion: this._processQuery(row[questionIndex]?.trim() || "")
                     })).filter(item => item.question && item.answer);
 
-                    // A população da lista de times só acontece se não estivermos em modo filtrado
                     if (!this.state.urlFilteredTeam) {
                         this._populateTeamsList();
                     }
 
-                    // Aplica o filtro da URL ou o padrão "Todos"
                     const initialFilter = this.state.urlFilteredTeam || 'Todos';
                     this._applyTeamFilter(initialFilter);
                     
-                    // Mensagem de boas-vindas customizada
                     const welcomeMessage = this.state.urlFilteredTeam 
                         ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?`
                         : "Olá! Sou o ChurnAssist. Como posso ajudar?";
@@ -482,15 +478,12 @@
                 
                 this._initSearchEngine();
                 
-                // Atualiza a classe 'active' apenas nos botões que existem
                 document.querySelectorAll('.team-filter').forEach(btn => 
                     btn.classList.toggle('active', btn.dataset.teamName === teamName)
                 );
                 
-                // Limpa o chat para começar a nova conversa filtrada
                 this.elements.chatArea.innerHTML = '';
 
-                // Se o modo busca estiver ativo, atualiza a lista
                 if (this.state.isSearchMode) {
                     this._populateKbList();
                 }
@@ -513,8 +506,6 @@
                 `).join('');
             }
             
-            // --- RESTANTE DO CÓDIGO (sem alterações) ---
-
             _toggleSearchMode() {
                 this.state.isSearchMode = !this.state.isSearchMode;
                 document.body.classList.toggle('search-mode-active');
@@ -534,7 +525,6 @@
                 this.elements.kbQuestionList.innerHTML = filteredData.map((item, index) => 
                     `<button class="kb-question-item" data-index="${this.state.qaData.indexOf(item)}">${item.question}</button>`
                 ).join('');
-                 // Limpa a área de resposta se a lista for atualizada
                 if (filter) {
                     this.elements.kbAnswerArea.innerHTML = `<div class="kb-answer-placeholder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Selecione uma pergunta na lista para ver a resposta aqui.</div>`;
                 }
@@ -665,7 +655,7 @@
             async _submitQuestionToForm(question) {
                 if (!question) return;
                 const formData = new FormData();
-                formData.append('entry.2126538361', question); // Este entry ID pode precisar ser ajustado se o formulário mudar
+                formData.append('entry.2126538361', question); 
                 try {
                     await fetch(this.config.SUGGESTION_FORM_URL, {
                         method: 'POST',
@@ -720,7 +710,6 @@
                 });
             }
 
-            // Funções de DB e inicialização de modelo, raramente precisam mudar
             async _initDatabase() {
                 return new Promise((resolve, reject) => {
                     const request = indexedDB.open(this.config.DB_NAME, 3);

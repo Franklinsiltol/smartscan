@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.8 - URL DIRECTORY MODEL --- */
+        /* --- PROJETO PHOENIX v2.9 - URL DIRECTORY FINAL --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -57,6 +57,8 @@
         #suggestionForm.active { display: flex; }
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
         #submitSuggestionBtn { background: var(--phoenix-primary); color: #fff; font-weight: 600; }
+        .scoped-view #teamsList { display: none; }
+        .scoped-view #viewToggleBtn { display: none; } 
 
         .main-view { width: 100%; display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
@@ -151,7 +153,7 @@
             
             <div id="teamsSection" class="sidebar-section">
                 <div class="sidebar-title">Times</div>
-                <div id="teamsList">
+                <div id="teamsListContainer">
                     <!-- Links dos times serão inseridos aqui pelo JS -->
                 </div>
             </div>
@@ -211,7 +213,7 @@
             </header>
 
             <div id="mainContent">
-                <!-- Conteúdo (Chat ou KB) será injetado aqui -->
+                <!-- Conteúdo (Chat, KB ou Placeholder) será injetado aqui -->
             </div>
         </main>
     </div>
@@ -266,7 +268,6 @@
         </div>
     </template>
 
-
     <script>
         class ChurnAssist {
             constructor() {
@@ -276,7 +277,7 @@
                     SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
                 };
                 this.elements = {};
-                this.state = { db: null, fuse: null, allQaData: [], qaData: [], allTeams: [], activeTeam: null, lastUnansweredQuestion: null, isSearchMode: false };
+                this.state = { fuse: null, allQaData: [], qaData: [], allTeams: [], activeTeam: null, lastUnansweredQuestion: null, isSearchMode: false };
                 this._init();
             }
             
@@ -285,12 +286,7 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     this.state.activeTeam = urlParams.get('time');
                     
-                    this.elements.sidebar = document.getElementById('sidebar');
-                    this.elements.menuToggle = document.getElementById('menuToggle');
-                    this.elements.mobileOverlay = document.getElementById('mobileOverlay');
-                    this.elements.teamsList = document.getElementById('teamsList');
-                    this.elements.mainContent = document.getElementById('mainContent');
-                    
+                    this._bindBaseElements();
                     await this._fetchAndUpdateData(); 
                     this._setupView();
                     this._setupEventListeners(); 
@@ -300,41 +296,61 @@
                 } 
             }
 
+            _bindBaseElements() {
+                this.elements.sidebar = document.getElementById('sidebar');
+                this.elements.menuToggle = document.getElementById('menuToggle');
+                this.elements.mobileOverlay = document.getElementById('mobileOverlay');
+                this.elements.teamsListContainer = document.getElementById('teamsListContainer');
+                this.elements.mainContent = document.getElementById('mainContent');
+                this.elements.statusText = document.getElementById('statusText');
+                this.elements.statusDot = document.querySelector('.status-dot');
+            }
+
             _setupView() {
                 this._populateTeamsList();
                 if (this.state.activeTeam) {
-                    // Scoped View
                     document.body.classList.add('scoped-view');
-                    this._applyTeamFilter(this.state.activeTeam, true);
+                    this._applyTeamFilter(this.state.activeTeam);
                     this._renderTemplate('chatTemplate');
-                    this._rebindChatElements();
+                    this._rebindDynamicElements();
                     this._addBotMessage(`Olá! Sou o ChurnAssist. Conectado ao time: ${this.state.activeTeam}. Como posso ajudar?`);
                 } else {
-                    // Directory View
                     this._renderTemplate('placeholderTemplate');
                     this.elements.sidebar.classList.add('sidebar-open');
                 }
             }
 
-            _rebindChatElements() {
-                this.elements.questionInput = document.getElementById('questionInput');
-                this.elements.askButton = document.getElementById('askButton');
-                this.elements.chatArea = document.getElementById('chatArea');
-                this.elements.autoUpdateStatus = document.getElementById('autoUpdateStatus');
-                this.elements.statusText = document.getElementById('statusText');
-                this.elements.statusDot = document.querySelector('.status-dot');
+            _rebindDynamicElements() {
+                this.elements.questionInput = document.getElementById('questionInput'); 
+                this.elements.askButton = document.getElementById('askButton'); 
+                this.elements.chatArea = document.getElementById('chatArea'); 
+                this.elements.autoUpdateStatus = document.getElementById('autoUpdateStatus'); 
+                this.elements.advancedModeToggle = document.getElementById('advancedModeToggle'); 
+                this.elements.dashboardButton = document.getElementById('dashboardButton'); 
+                this.elements.dashboardModal = document.getElementById('dashboardModal'); 
+                this.elements.closeDashboardBtn = document.getElementById('closeDashboardBtn');
+                this.elements.suggestButton = document.getElementById('suggestButton');
+                this.elements.suggestionForm = document.getElementById('suggestionForm');
+                this.elements.suggestionTextarea = document.getElementById('suggestionTextarea');
+                this.elements.submitSuggestionBtn = document.getElementById('submitSuggestionBtn');
+                this.elements.commandButtons = document.querySelectorAll('.command-button');
+                this.elements.viewToggleBtn = document.getElementById('viewToggleBtn');
+                this.elements.viewToggleText = document.getElementById('viewToggleText');
             }
             
             _setupEventListeners(){ 
                 this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
                 this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
 
-                // Eventos que só funcionam se estiver em Scoped View
                 if (this.state.activeTeam) {
                     this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
                     this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
-                    this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
+                    this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
+                    this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
+                    this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
+                    this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question);}});
                     this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
+                    this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
                 }
             }
 
@@ -360,12 +376,16 @@
                     this._populateKbList();
                 } else {
                     this._renderTemplate('chatTemplate');
-                    this._rebindChatElements();
+                    this._rebindDynamicElements();
+                    this._setupChatEventListeners();
                     this.elements.viewToggleText.textContent = "Modo Busca";
                     this.elements.viewToggleBtn.classList.remove('active');
-                    // Recarrega o histórico do chat
-                    this._addBotMessage(`Filtro atual: ${this.state.activeTeam}. Como posso ajudar?`);
+                    this._addBotMessage(`Você está no modo Chat do time: ${this.state.activeTeam}.`);
                 }
+            }
+             _setupChatEventListeners() {
+                this.elements.askButton.addEventListener('click', () => this._handleQuestion());
+                this.elements.questionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this._handleQuestion(); });
             }
             
             _populateKbList(filter = '') {
@@ -383,10 +403,7 @@
                 this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`;
             }
 
-            _addMessage(text,sender,options=[]){
-                if(!this.elements.chatArea) return;
-                const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;
-            }
+            _addMessage(text,sender,options=[]){ if(!this.elements.chatArea) return; const messageDiv=document.createElement('div');messageDiv.className=`message ${sender}-message`;const formattedText=this._createHyperlinks(text);const contentDiv=document.createElement('div');contentDiv.innerHTML=formattedText.replace(/\n/g,'<br>');messageDiv.appendChild(contentDiv);if(options.length>0){options.forEach(result=>{const button=document.createElement('button');button.className='option-button';button.textContent=result.item.question;button.onclick=()=>{this._addUserMessage(result.item.question);this._showTypingIndicator();setTimeout(()=>{this._addBotMessage(result.item.answer);},400);};messageDiv.appendChild(button);});} this.elements.chatArea.appendChild(messageDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
             _showTypingIndicator(){this._removeTypingIndicator();if(!this.elements.chatArea) return; const typingDiv=document.createElement('div');typingDiv.id='typingIndicator';typingDiv.className='message bot-message';typingDiv.innerHTML='<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';this.elements.chatArea.appendChild(typingDiv);this.elements.chatArea.scrollTop=this.elements.chatArea.scrollHeight;}
 
             async _handleQuestion() {
@@ -466,7 +483,6 @@
                     })).filter(item => item.question && item.answer);
                     
                     this._updateStatus('Pronto', 'success');
-
                 } catch(error) {
                     console.error("Erro ao buscar dados:", error);
                     this._updateStatus("Erro ao carregar", 'error');
@@ -475,19 +491,22 @@
 
             _populateTeamsList() {
                 const teams = new Set();
-                this.state.allQaData.forEach(item => { item.team.split(',').forEach(t => teams.add(t.trim())); });
+                this.state.allQaData.forEach(item => { item.team.split(',').forEach(t => { if(t) teams.add(t.trim()) }); });
                 this.state.allTeams = [...teams].sort();
                 
-                this.elements.teamsList.innerHTML = this.state.allTeams.map(team => `
-                    <a href="?time=${encodeURIComponent(team)}" class="sidebar-button team-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        <span>${team}</span>
-                    </a>
-                `).join('');
+                if (this.state.activeTeam) {
+                    this.elements.teamsListContainer.innerHTML = `<div class="sidebar-button" style="cursor: default; opacity: 1; color: var(--phoenix-text-primary);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>${this.state.activeTeam}</span></div>`;
+                } else {
+                    this.elements.teamsListContainer.innerHTML = this.state.allTeams.map(team => `
+                        <a href="?time=${encodeURIComponent(team)}" class="sidebar-button team-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                            <span>${team}</span>
+                        </a>
+                    `).join('');
+                }
             }
             
-            _applyTeamFilter(teamName, isInitialLoad = false) {
-                this.state.activeTeam = teamName;
+            _applyTeamFilter(teamName) {
                 this.state.qaData = this.state.allQaData.filter(item => 
                     item.team.split(',').map(t => t.trim()).includes(teamName)
                 );
@@ -509,13 +528,14 @@
                 this.state.lastUnansweredQuestion = null;
             }
             
-            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Contexto: ${this.state.activeTeam}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData();break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
+            _handleCommand(command){const cmd=command.toLowerCase().split(' ')[0];switch(cmd){case'/limpar':this.elements.chatArea.innerHTML='';this._addBotMessage(`Chat limpo. Contexto: ${this.state.activeTeam}.`);break;case'/atualizar':this._addBotMessage("Iniciando verificação manual...");this._fetchAndUpdateData().then(() => this._applyTeamFilter(this.state.activeTeam));break;default:this._addBotMessage(`Comando "${cmd}" não reconhecido.`);}}
             _addUserMessage(text){this._addMessage(text,'user');}
             _addBotMessage(text,options=[]){this._removeTypingIndicator();this._addMessage(text,'bot',options);}
             _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}
             _updateStatus(text,status){if(!this.elements.statusText) return; this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
             _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
-             _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
+            _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
+            _processQuery(text) { if (!text) return text.toLowerCase(); let doc = nlp(text.toLowerCase()); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
         }
         document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });
     </script>

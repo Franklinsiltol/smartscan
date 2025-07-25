@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v2.9 - NOTIFICAÇÕES REINTEGRADAS --- */
+        /* --- PROJETO PHOENIX v3.1 - CÓDIGO RESTAURADO --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -83,29 +83,8 @@
         .typing-dot:nth-child(1) { animation-delay: 0s; } .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes typingAnimation { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-5px); opacity: 1; } }
         
-        /* NOVO ESTILO PARA A MENSAGEM DE NOTIFICAÇÃO */
-        .notification-message {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            background: var(--phoenix-surface);
-            border: 1px solid var(--phoenix-border);
-            border-left: 4px solid var(--phoenix-primary);
-            color: var(--phoenix-text-primary);
-            padding: 1rem 1.25rem;
-            border-radius: 12px;
-            animation: fadeIn 0.5s ease-out;
-            max-width: 75%;
-            margin-right: auto;
-            word-wrap: break-word;
-        }
-        .notification-message svg {
-            width: 20px;
-            height: 20px;
-            flex-shrink: 0;
-            margin-top: 2px;
-            color: var(--phoenix-primary);
-        }
+        .notification-message { display: flex; align-items: flex-start; gap: 1rem; background: var(--phoenix-surface); border: 1px solid var(--phoenix-border); border-left: 4px solid var(--phoenix-primary); color: var(--phoenix-text-primary); padding: 1rem 1.25rem; border-radius: 12px; animation: fadeIn 0.5s ease-out; max-width: 75%; margin-right: auto; word-wrap: break-word; }
+        .notification-message svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; color: var(--phoenix-primary); }
 
         .action-buttons { margin-top: 1rem; display: flex; gap: 0.75rem; }
         .action-button { display: inline-block; padding: 0.5rem 1rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.9rem; text-align: center; cursor: pointer; transition: all 0.2s; border: none; font-weight: 600; }
@@ -282,11 +261,12 @@
                 this.config = {
                     SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY",
                     SHEET_NAME: "Perguntas",
-                    NOTIFICATION_SHEET_NAME: "Notificações", // NOME DA ABA DE NOTIFICAÇÕES
+                    NOTIFICATION_SHEET_NAME: "Notificações",
                     SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
                     AUTO_UPDATE_INTERVAL: 600000,
                     DB_NAME: "ChurnAssistDB",
-                    STORE_NAME: "KnowledgeBase"
+                    STORE_NAME: "KnowledgeBase",
+                    ADVANCED_MODE_KEY: 'isAdvancedModeActive',
                 };
                 this.elements = {
                     questionInput: document.getElementById('questionInput'),
@@ -294,10 +274,9 @@
                     chatArea: document.getElementById('chatArea'),
                     statusText: document.getElementById('statusText'),
                     statusDot: document.querySelector('.status-dot'),
-                    autoUpdateStatus: document.getElementById('autoUpdateStatus'),
                     advancedModeToggle: document.getElementById('advancedModeToggle'),
-                    dashboardButton: document.getElementById('dashboardButton'),
-                    dashboardModal: document.getElementById('dashboardModal'),
+                    dashboardButton: document.getElementById('dashboardButton'), 
+                    dashboardModal: document.getElementById('dashboardModal'), 
                     closeDashboardBtn: document.getElementById('closeDashboardBtn'),
                     sidebar: document.getElementById('sidebar'),
                     menuToggle: document.getElementById('menuToggle'),
@@ -319,12 +298,16 @@
                 this.state = {
                     db: null,
                     fuse: null,
-                    allQaData: [],
+                    useModel: null,
                     qaData: [],
+                    allQaData: [],
                     activeTeamFilter: 'Todos',
                     lastUnansweredQuestion: null,
                     isSearchMode: false,
-                    urlFilteredTeam: null
+                    urlFilteredTeam: null,
+                    isAdvancedMode: false,
+                    isModelLoading: false,
+                    isModelLoaded: false,
                 };
                 this._init();
             }
@@ -333,6 +316,8 @@
                 try {
                     this._checkForUrlFilter();
                     await this._initDatabase();
+                    await this._checkAdvancedModeStatus(); 
+                    
                     await this._fetchAndUpdateData();
                     this._setupEventListeners();
 
@@ -347,297 +332,88 @@
             
             _setupEventListeners() {
                 this.elements.askButton.addEventListener('click', () => this._handleQuestion());
-                this.elements.questionInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this._handleQuestion();
-                });
-                this.elements.dashboardButton.addEventListener('click', () => {
-                    this.elements.dashboardModal.style.display = 'flex';
-                });
-                this.elements.closeDashboardBtn.addEventListener('click', () => {
-                    this.elements.dashboardModal.style.display = 'none';
-                });
+                this.elements.questionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this._handleQuestion(); });
+                this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; });
+                this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; });
                 this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
-                this.elements.submitSuggestionBtn.addEventListener('click', () => {
-                    const question = this.elements.suggestionTextarea.value.trim();
-                    if (question) {
-                        this._submitQuestionToForm(question);
-                    }
-                });
-                this.elements.menuToggle.addEventListener('click', () => {
-                    this.elements.sidebar.classList.add('sidebar-open');
-                    this.elements.mobileOverlay.classList.add('active');
-                });
-                this.elements.mobileOverlay.addEventListener('click', () => {
-                    this.elements.sidebar.classList.remove('sidebar-open');
-                    this.elements.mobileOverlay.classList.remove('active');
-                });
-                this.elements.commandButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const command = button.dataset.command;
-                        this.elements.questionInput.value = command;
-                        this._handleQuestion();
-                        this.elements.sidebar.classList.remove('sidebar-open');
-                        this.elements.mobileOverlay.classList.remove('active');
-                    });
-                });
+                this.elements.submitSuggestionBtn.addEventListener('click', () => { const question = this.elements.suggestionTextarea.value.trim(); if (question) { this._submitQuestionToForm(question); } });
+                this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
+                this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
+                this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
                 this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
                 this.elements.kbSearchInput.addEventListener('input', (e) => this._populateKbList(e.target.value));
-                this.elements.kbQuestionList.addEventListener('click', (e) => {
-                    const item = e.target.closest('.kb-question-item');
-                    if (item) {
-                        this._displayKbAnswer(parseInt(item.dataset.index, 10));
-                        document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected'));
-                        item.classList.add('selected');
-                    }
-                });
-
-                this.elements.allTeamsBtn.addEventListener('click', () => {
-                    window.location.href = window.location.origin + window.location.pathname;
-                });
-                this.elements.teamsList.addEventListener('click', (e) => {
-                    const teamButton = e.target.closest('.team-filter');
-                    if (teamButton) {
-                        const teamName = teamButton.dataset.teamName;
-                        const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('team', teamName);
-                        window.location.href = newUrl.toString();
-                    }
-                });
+                this.elements.kbQuestionList.addEventListener('click', (e) => { const item = e.target.closest('.kb-question-item'); if (item) { this._displayKbAnswer(parseInt(item.dataset.index, 10)); document.querySelectorAll('.kb-question-item').forEach(el => el.classList.remove('selected')); item.classList.add('selected'); } });
+                this.elements.allTeamsBtn.addEventListener('click', () => { window.location.href = window.location.origin + window.location.pathname; });
+                this.elements.teamsList.addEventListener('click', (e) => { const teamButton = e.target.closest('.team-filter'); if (teamButton) { const teamName = teamButton.dataset.teamName; const newUrl = new URL(window.location.href); newUrl.searchParams.set('team', teamName); window.location.href = newUrl.toString(); } });
+                this.elements.advancedModeToggle.addEventListener('change', (e) => this._handleAdvancedModeToggle(e.target.checked));
             }
 
-            _checkForUrlFilter() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const teamFromUrl = urlParams.get('team');
-                if (teamFromUrl) {
-                    this.state.urlFilteredTeam = decodeURIComponent(teamFromUrl);
+            async _handleAdvancedModeToggle(isChecked) {
+                await this._saveToDatabase(isChecked, this.config.ADVANCED_MODE_KEY);
+                this._addBotMessage(`Modo Avançado ${isChecked ? 'ativado' : 'desativado'}. A página será recarregada.`);
+                setTimeout(() => window.location.reload(), 1500);
+            }
+
+            async _checkAdvancedModeStatus() {
+                const useAdvancedMode = await this._getFromDatabase(this.config.ADVANCED_MODE_KEY);
+                if (useAdvancedMode) {
+                    this.state.isAdvancedMode = true;
+                    this.elements.advancedModeToggle.checked = true;
+                    this._startModelLoading();
+                } else {
+                    this.state.isAdvancedMode = false;
+                    this.elements.advancedModeToggle.checked = false;
                 }
             }
 
-            _setupFilteredTeamView(teamName) {
-                this.elements.allTeamsBtn.style.display = 'none';
-                this.elements.teamsList.style.display = 'none';
-
-                const filteredTeamDisplay = document.createElement('div');
-                filteredTeamDisplay.className = 'sidebar-button active';
-                filteredTeamDisplay.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                    <span>${teamName}</span>
-                `;
-
-                const backButton = document.createElement('a');
-                backButton.href = window.location.origin + window.location.pathname;
-                backButton.className = 'sidebar-button';
-                backButton.innerHTML = `
-                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                    <span>Ver todos os times</span>
-                `;
+            async _startModelLoading() {
+                if (this.state.isModelLoading || this.state.isModelLoaded) return;
                 
-                this.elements.teamsSection.appendChild(filteredTeamDisplay);
-                this.elements.teamsSection.appendChild(backButton);
-            }
-            
-            // FUNÇÃO DE NOTIFICAÇÃO (INÍCIO)
-            _addNotificationMessage(text) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'notification-message';
-                const formattedText = this._createHyperlinks(text).replace(/\n/g, '<br>');
-
-                // Ícone de "Informação"
-                messageDiv.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                    </svg>
-                    <div>${formattedText}</div>
-                `;
-
-                this.elements.chatArea.appendChild(messageDiv);
-                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
-            }
-
-            async _fetchAndDisplayNotification() {
-                const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET_NAME)}&t=${Date.now()}`;
+                this.state.isModelLoading = true;
+                this._updateStatus("Carregando Modelo IA...", 'loading');
                 try {
-                    const response = await fetch(url);
-                    // Falha silenciosamente se a aba não existir
-                    if (!response.ok) {
-                        console.warn(`Aba de notificações "${this.config.NOTIFICATION_SHEET_NAME}" não encontrada.`);
-                        return;
-                    }
-                    const csvText = await response.text();
-                    // Não faz nada se a aba estiver vazia
-                    if (!csvText.trim()) return;
-
-                    const parsedData = this._parseCSV(csvText);
-                    // Pega a mensagem da primeira célula (A1)
-                    const notificationMessage = parsedData?.[0]?.[0]?.trim();
-
-                    if (notificationMessage) {
-                        this._addNotificationMessage(notificationMessage);
-                    }
+                    this.state.useModel = await use.load();
+                    this.state.isModelLoaded = true;
+                    this._updateStatus("Pronto (Modo Avançado)", 'success');
+                    this._addBotMessage("✅ O Modo Avançado (busca semântica) está ativo!");
                 } catch (error) {
-                    console.error("Não foi possível buscar a notificação:", error);
+                    console.error("Erro ao carregar modelo USE:", error);
+                    this.state.isAdvancedMode = false;
+                    this.elements.advancedModeToggle.checked = false;
+                    await this._saveToDatabase(false, this.config.ADVANCED_MODE_KEY);
+                    this._updateStatus("Erro no Modelo IA", 'error');
+                    this._addBotMessage("❌ Falha ao carregar o Modo Avançado. Revertendo para o modo padrão.");
+                } finally {
+                    this.state.isModelLoading = false;
                 }
             }
-            // FUNÇÃO DE NOTIFICAÇÃO (FIM)
 
-            async _fetchAndUpdateData(isManualUpdate = false) {
-                if (!isManualUpdate) {
-                    this._updateStatus("Atualizando base...", 'loading');
-                }
+            async _findSimilarSentences(query) {
+                if (!this.state.isModelLoaded || !this.state.useModel) return [];
+
+                const questions = this.state.qaData.map(item => item.question);
+                const embeddings = await this.state.useModel.embed([query, ...questions]);
                 
-                const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
-                    const csvText = await response.text();
-                    
-                    const parsedData = this._parseCSV(csvText);
-                    const headers = parsedData[0].map(h => h.trim().toLowerCase());
-                    const questionIndex = headers.indexOf("pergunta");
-                    const answerIndex = headers.indexOf("resposta");
-                    const teamIndex = headers.indexOf("time");
-
-                    if (questionIndex === -1 || answerIndex === -1 || teamIndex === -1) {
-                        throw new Error('Colunas "pergunta", "resposta" e "time" são obrigatórias.');
-                    }
-                    
-                    this.state.allQaData = parsedData.slice(1).map(row => ({
-                        question: row[questionIndex]?.trim() || "",
-                        answer: row[answerIndex]?.trim() || "",
-                        team: row[teamIndex]?.trim() || "Geral",
-                        processedQuestion: this._processQuery(row[questionIndex]?.trim() || "")
-                    })).filter(item => item.question && item.answer);
-
-                    if (!this.state.urlFilteredTeam) {
-                        this._populateTeamsList();
-                    }
-
-                    const initialFilter = this.state.urlFilteredTeam || 'Todos';
-                    this._applyTeamFilter(initialFilter);
-                    
-                    if (!isManualUpdate) {
-                        const welcomeMessage = this.state.urlFilteredTeam 
-                            ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?`
-                            : "Olá! Sou o ChurnAssist. Como posso ajudar?";
-                        this._addBotMessage(welcomeMessage);
-                        // Chama a função de notificação após a mensagem de boas-vindas
-                        await this._fetchAndDisplayNotification();
-                    }
-                    
-                    this._updateStatus('Pronto', 'success');
-
-                } catch(error) {
-                    console.error("Erro ao buscar dados:", error);
-                    this._updateStatus("Erro ao carregar", 'error');
-                    this._addBotMessage("Não consegui carregar a base de conhecimento. Verifique o console para mais detalhes.");
-                }
-            }
-
-            _applyTeamFilter(teamName) {
-                this.state.activeTeamFilter = teamName;
+                const queryEmbedding = embeddings.slice(0, 1);
+                const questionEmbeddings = embeddings.slice(1);
                 
-                if (teamName === 'Todos') {
-                    this.state.qaData = [...this.state.allQaData];
-                } else {
-                    this.state.qaData = this.state.allQaData.filter(item => 
-                        item.team.split(',').map(t => t.trim()).includes(teamName)
-                    );
+                const scores = [];
+                for (let i = 0; i < questions.length; i++) {
+                    const scoreTensor = tf.matMul(queryEmbedding, questionEmbeddings.slice(i, i + 1), false, true);
+                    const score = await scoreTensor.data();
+                    scores.push({ index: i, score: score[0] });
+                    scoreTensor.dispose();
                 }
-                
-                this._initSearchEngine();
-                
-                document.querySelectorAll('.team-filter').forEach(btn => 
-                    btn.classList.toggle('active', btn.dataset.teamName === teamName)
-                );
-                
-                this.elements.chatArea.innerHTML = '';
 
-                if (this.state.isSearchMode) {
-                    this._populateKbList();
-                }
-            }
-
-            _populateTeamsList() {
-                const teams = new Set();
-                this.state.allQaData.forEach(item => {
-                    item.team.split(',').forEach(t => {
-                        const trimmedTeam = t.trim();
-                        if (trimmedTeam) teams.add(trimmedTeam);
-                    });
-                });
+                tf.dispose([embeddings, queryEmbedding, questionEmbeddings]);
                 
-                this.elements.teamsList.innerHTML = [...teams].sort().map(team => `
-                    <button class="sidebar-button team-filter" data-team-name="${team}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        <span>${team}</span>
-                    </button>
-                `).join('');
-            }
-            
-            _toggleSearchMode() {
-                this.state.isSearchMode = !this.state.isSearchMode;
-                document.body.classList.toggle('search-mode-active');
-                if (this.state.isSearchMode) {
-                    this.elements.viewToggleText.textContent = "Voltar ao Chat";
-                    this.elements.viewToggleBtn.classList.add('active');
-                    this._populateKbList();
-                } else {
-                    this.elements.viewToggleText.textContent = "Modo Busca";
-                    this.elements.viewToggleBtn.classList.remove('active');
-                }
-            }
-            
-            _populateKbList(filter = '') {
-                const lowerFilter = filter.toLowerCase();
-                const filteredData = this.state.qaData.filter(item => item.question.toLowerCase().includes(lowerFilter));
-                this.elements.kbQuestionList.innerHTML = filteredData.map((item, index) => 
-                    `<button class="kb-question-item" data-index="${this.state.qaData.indexOf(item)}">${item.question}</button>`
-                ).join('');
-                if (filter) {
-                    this.elements.kbAnswerArea.innerHTML = `<div class="kb-answer-placeholder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Selecione uma pergunta na lista para ver a resposta aqui.</div>`;
-                }
-            }
-
-            _displayKbAnswer(index) {
-                if (index < 0 || index >= this.state.qaData.length) return;
-                const item = this.state.qaData[index];
-                const formattedAnswer = this._createHyperlinks(item.answer).replace(/\n/g, '<br>');
-                this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`;
-            }
-
-            _addMessage(text, sender, options = []) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${sender}-message`;
-                const formattedText = this._createHyperlinks(text);
-                const contentDiv = document.createElement('div');
-                contentDiv.innerHTML = formattedText.replace(/\n/g, '<br>');
-                messageDiv.appendChild(contentDiv);
-                if (options.length > 0) {
-                    options.forEach(result => {
-                        const button = document.createElement('button');
-                        button.className = 'option-button';
-                        button.textContent = result.item.question;
-                        button.onclick = () => {
-                            this._addUserMessage(result.item.question);
-                            this._showTypingIndicator();
-                            setTimeout(() => {
-                                this._addBotMessage(result.item.answer);
-                            }, 400);
-                        };
-                        messageDiv.appendChild(button);
-                    });
-                }
-                this.elements.chatArea.appendChild(messageDiv);
-                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
-            }
-            _showTypingIndicator() {
-                this._removeTypingIndicator();
-                const typingDiv = document.createElement('div');
-                typingDiv.id = 'typingIndicator';
-                typingDiv.className = 'message bot-message';
-                typingDiv.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
-                this.elements.chatArea.appendChild(typingDiv);
-                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
+                return scores
+                    .sort((a, b) => b.score - a.score)
+                    .filter(item => item.score > 0.6)
+                    .map(item => ({
+                        item: this.state.qaData[item.index],
+                        score: item.score
+                    }));
             }
 
             async _handleQuestion() {
@@ -653,214 +429,187 @@
                 this.elements.questionInput.value = '';
 
                 this._showTypingIndicator();
+                
                 setTimeout(async () => {
                     try {
                         let answerText = null;
                         let answerOptions = [];
-                        const processedQuery = this._processQuery(question);
+                        let results = [];
 
-                        if (!this.state.fuse) {
-                            answerText = "A base de conhecimento não está pronta.";
-                        } else {
-                            const results = this.state.fuse.search(processedQuery);
-                            if (results.length > 0 && results[0].score < 0.35) {
+                        if (this.state.isAdvancedMode && this.state.isModelLoaded) {
+                            results = await this._findSimilarSentences(question);
+                            if (results.length > 0) {
                                 answerText = results[0].item.answer;
-                            } else if (results.length > 0) {
-                                answerText = "Não tenho certeza, mas talvez uma destas opções ajude:";
-                                answerOptions = results.slice(0, 3);
+                            }
+                        } else {
+                            if (this.state.fuse) {
+                                const fuseResults = this.state.fuse.search(this._processQuery(question));
+                                results = fuseResults.map(r => ({ item: r.item, score: 1 - r.score }));
+                                
+                                if (fuseResults.length > 0 && fuseResults[0].score < 0.35) {
+                                    answerText = fuseResults[0].item.answer;
+                                }
                             } else {
-                                this.state.lastUnansweredQuestion = question;
-                                answerText = "Desculpe, não encontrei uma resposta. Gostaria de adicionar esta pergunta à nossa base de conhecimento?";
+                                answerText = "A base de conhecimento não está pronta.";
                             }
                         }
+
+                        if (answerText) {
+                            // Resposta direta já definida
+                        } else if (results.length > 0) {
+                            answerText = "Não tenho certeza, mas talvez uma destas opções ajude:";
+                            answerOptions = results.slice(0, 3);
+                        } else {
+                            this.state.lastUnansweredQuestion = question;
+                            answerText = "Desculpe, não encontrei uma resposta. Gostaria de adicionar esta pergunta à nossa base de conhecimento?";
+                        }
+                        
                         this._addBotMessage(answerText, answerOptions);
                         if (answerText.includes("Gostaria de adicionar esta pergunta")) {
                             this._showAddQuestionButtons();
                         }
+
                     } catch (error) {
                         console.error("Erro ao processar pergunta:", error);
                         this._addBotMessage("Ocorreu um erro ao processar sua pergunta.");
                     }
                 }, 800);
             }
-
-            _showAddQuestionButtons() {
-                const messageDiv = this.elements.chatArea.querySelector('.message:last-child');
-                if (!messageDiv) return;
-                const buttonsContainer = document.createElement('div');
-                buttonsContainer.className = 'action-buttons';
-                const yesButton = document.createElement('button');
-                yesButton.className = 'action-button yes';
-                yesButton.textContent = 'Sim, sugerir';
-                yesButton.onclick = () => {
-                    this._submitQuestionToForm(this.state.lastUnansweredQuestion);
-                    buttonsContainer.innerHTML = `<p style="font-size: 0.9em; color: var(--phoenix-text-secondary); margin-top: 0.5rem;">Obrigado!</p>`;
-                };
-                const noButton = document.createElement('button');
-                noButton.className = 'action-button no';
-                noButton.textContent = 'Não';
-                noButton.onclick = () => {
-                    buttonsContainer.remove();
-                };
-                buttonsContainer.appendChild(yesButton);
-                buttonsContainer.appendChild(noButton);
-                messageDiv.appendChild(buttonsContainer);
+            
+            _addNotificationMessage(text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'notification-message';
+                const formattedText = this._createHyperlinks(text).replace(/\n/g, '<br>');
+                messageDiv.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                    </svg>
+                    <div>${formattedText}</div>
+                `;
+                this.elements.chatArea.appendChild(messageDiv);
+                this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight;
             }
 
-            _initSearchEngine() {
-                if (!this.state.qaData || this.state.qaData.length === 0) {
-                    console.warn("Nenhum dado para inicializar o motor de busca. Verifique o filtro.");
-                    this.state.fuse = null;
-                    return;
-                }
-                this.state.fuse = new Fuse(this.state.qaData, {
-                    keys: ['processedQuestion'],
-                    includeScore: true,
-                    threshold: 0.4
-                });
-            }
-
-            async _submitQuestionToForm(question) {
-                if (!question) return;
-                const formData = new FormData();
-                formData.append('entry.2126538361', question); 
+            async _fetchAndDisplayNotification() {
+                const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET_NAME)}&t=${Date.now()}`;
                 try {
-                    await fetch(this.config.SUGGESTION_FORM_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: formData
-                    });
-                    this._addBotMessage("Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe.");
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        console.warn(`Aba de notificações "${this.config.NOTIFICATION_SHEET_NAME}" não encontrada.`);
+                        return;
+                    }
+                    const csvText = await response.text();
+                    if (!csvText.trim()) return;
+                    const parsedData = this._parseCSV(csvText);
+                    const notificationMessage = parsedData?.[0]?.[0]?.trim();
+                    if (notificationMessage) {
+                        this._addNotificationMessage(notificationMessage);
+                    }
                 } catch (error) {
-                    console.error("Erro ao enviar pergunta:", error);
-                    this._addBotMessage("Houve um erro ao enviar sua pergunta.");
+                    console.error("Não foi possível buscar a notificação:", error);
                 }
-                this.state.lastUnansweredQuestion = null;
+            }
+
+            _checkForUrlFilter() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const teamFromUrl = urlParams.get('team');
+                if (teamFromUrl) {
+                    this.state.urlFilteredTeam = decodeURIComponent(teamFromUrl);
+                }
+            }
+
+            _setupFilteredTeamView(teamName) {
+                this.elements.allTeamsBtn.style.display = 'none';
+                this.elements.teamsList.style.display = 'none';
+                const filteredTeamDisplay = document.createElement('div');
+                filteredTeamDisplay.className = 'sidebar-button active';
+                filteredTeamDisplay.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> <span>${teamName}</span> `;
+                const backButton = document.createElement('a');
+                backButton.href = window.location.origin + window.location.pathname;
+                backButton.className = 'sidebar-button';
+                backButton.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg> <span>Ver todos os times</span> `;
+                this.elements.teamsSection.appendChild(filteredTeamDisplay);
+                this.elements.teamsSection.appendChild(backButton);
+            }
+
+            async _fetchAndUpdateData(isManualUpdate = false) {
+                if (!isManualUpdate && !this.state.isModelLoading) {
+                    this._updateStatus("Atualizando base...", 'loading');
+                }
+                const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`;
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                    const csvText = await response.text();
+                    const parsedData = this._parseCSV(csvText);
+                    const headers = parsedData[0].map(h => h.trim().toLowerCase());
+                    const questionIndex = headers.indexOf("pergunta");
+                    const answerIndex = headers.indexOf("resposta");
+                    const teamIndex = headers.indexOf("time");
+                    if (questionIndex === -1 || answerIndex === -1 || teamIndex === -1) { throw new Error('Colunas "pergunta", "resposta" e "time" são obrigatórias.'); }
+                    this.state.allQaData = parsedData.slice(1).map(row => ({ question: row[questionIndex]?.trim() || "", answer: row[answerIndex]?.trim() || "", team: row[teamIndex]?.trim() || "Geral", processedQuestion: this._processQuery(row[questionIndex]?.trim() || "") })).filter(item => item.question && item.answer);
+                    if (!this.state.urlFilteredTeam) { this._populateTeamsList(); }
+                    const initialFilter = this.state.urlFilteredTeam || 'Todos';
+                    this._applyTeamFilter(initialFilter);
+                    if (!isManualUpdate) {
+                        const welcomeMessage = this.state.urlFilteredTeam ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?` : "Olá! Sou o ChurnAssist. Como posso ajudar?";
+                        this._addBotMessage(welcomeMessage);
+                        await this._fetchAndDisplayNotification();
+                    }
+                    if (!this.state.isModelLoading) { this._updateStatus('Pronto', 'success'); }
+                } catch(error) {
+                    console.error("Erro ao buscar dados:", error);
+                    this._updateStatus("Erro ao carregar", 'error');
+                    this._addBotMessage("Não consegui carregar a base de conhecimento. Verifique o console para mais detalhes.");
+                }
+            }
+
+            _applyTeamFilter(teamName) {
+                this.state.activeTeamFilter = teamName;
+                if (teamName === 'Todos') { this.state.qaData = [...this.state.allQaData]; } else { this.state.qaData = this.state.allQaData.filter(item => item.team.split(',').map(t => t.trim()).includes(teamName)); }
+                this._initSearchEngine();
+                document.querySelectorAll('.team-filter').forEach(btn => btn.classList.toggle('active', btn.dataset.teamName === teamName));
+                this.elements.chatArea.innerHTML = '';
+                if (this.state.isSearchMode) { this._populateKbList(); }
+            }
+
+            _populateTeamsList() {
+                const teams = new Set();
+                this.state.allQaData.forEach(item => { item.team.split(',').forEach(t => { const trimmedTeam = t.trim(); if (trimmedTeam) teams.add(trimmedTeam); }); });
+                this.elements.teamsList.innerHTML = [...teams].sort().map(team => ` <button class="sidebar-button team-filter" data-team-name="${team}"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> <span>${team}</span> </button> `).join('');
+            }
+            
+            _initSearchEngine() {
+                if (!this.state.qaData || this.state.qaData.length === 0) { this.state.fuse = null; return; }
+                this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4 });
             }
 
             _handleCommand(command) {
                 const cmd = command.toLowerCase().split(' ')[0];
                 switch (cmd) {
-                    case '/limpar':
-                        this.elements.chatArea.innerHTML = '';
-                        this._addBotMessage(`Chat limpo. Filtro atual: ${this.state.activeTeamFilter}.`);
-                        break;
-                    case '/atualizar':
-                        this._addBotMessage("Iniciando verificação manual...");
-                        this._fetchAndUpdateData(true);
-                        break;
-                    default:
-                        this._addBotMessage(`Comando "${cmd}" não reconhecido.`);
+                    case '/limpar': this.elements.chatArea.innerHTML = ''; this._addBotMessage(`Chat limpo. Filtro atual: ${this.state.activeTeamFilter}.`); break;
+                    case '/atualizar': this._addBotMessage("Iniciando verificação manual..."); this._fetchAndUpdateData(true); break;
+                    default: this._addBotMessage(`Comando "${cmd}" não reconhecido.`);
                 }
-            }
-            _addUserMessage(text) {
-                this._addMessage(text, 'user');
-            }
-            _addBotMessage(text, options = []) {
-                this._removeTypingIndicator();
-                this._addMessage(text, 'bot', options);
-            }
-            _removeTypingIndicator() {
-                const indicator = document.getElementById('typingIndicator');
-                if (indicator) indicator.remove();
-            }
-            _updateStatus(text, status) {
-                this.elements.statusText.textContent = text;
-                this.elements.statusDot.className = 'status-dot';
-                if (status !== 'success') this.elements.statusDot.classList.add(status);
-            }
-            _createHyperlinks(text) {
-                if (!text) return '';
-                const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-                return text.replace(urlRegex, (url) => {
-                    const link = url.startsWith('www.') ? `https://` + url : url;
-                    return `<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-                });
             }
 
-            async _initDatabase() {
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open(this.config.DB_NAME, 3);
-                    request.onupgradeneeded = (e) => {
-                        const db = e.target.result;
-                        if (!db.objectStoreNames.contains(this.config.STORE_NAME)) {
-                            db.createObjectStore(this.config.STORE_NAME);
-                        }
-                    };
-                    request.onsuccess = (e) => {
-                        this.state.db = e.target.result;
-                        resolve();
-                    };
-                    request.onerror = (e) => {
-                        console.error("Erro no IndexedDB:", e.target.error);
-                        reject(e.target.error);
-                    };
-                });
-            }
-            _processQuery(text) {
-                if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, '');
-                let doc = nlp(text);
-                doc.normalize('heavy');
-                let terms = doc.nouns().out('array');
-                terms = terms.concat(doc.verbs().out('array'));
-                terms = terms.concat(doc.adjectives().out('array'));
-                if (terms.length === 0) {
-                    return doc.text('reduced');
-                }
-                return terms.join(' ');
-            }
-            _parseCSV(csvText) {
-                const rows = [];
-                let currentRow = [];
-                let currentField = '';
-                let inQuotedField = false;
-                csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                for (let i = 0; i < csvText.length; i++) {
-                    const char = csvText[i];
-                    if (inQuotedField) {
-                        if (char === '"') {
-                            if (i + 1 < csvText.length && csvText[i + 1] === '"') {
-                                currentField += '"';
-                                i++;
-                            } else {
-                                inQuotedField = false;
-                            }
-                        } else {
-                            currentField += char;
-                        }
-                    } else {
-                        switch (char) {
-                            case ',':
-                                currentRow.push(currentField);
-                                currentField = '';
-                                break;
-                            case '\n':
-                                currentRow.push(currentField);
-                                rows.push(currentRow);
-                                currentRow = [];
-                                currentField = '';
-                                break;
-                            case '"':
-                                if (currentField === '') {
-                                    inQuotedField = true;
-                                } else {
-                                    currentField += char;
-                                }
-                                break;
-                            default:
-                                currentField += char;
-                        }
-                    }
-                }
-                if (currentField || currentRow.length > 0) {
-                    currentRow.push(currentField);
-                    rows.push(currentRow);
-                }
-                if (rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') {
-                    rows.pop();
-                }
-                return rows;
-            }
+            _addMessage(text, sender, options = []) { const messageDiv = document.createElement('div'); messageDiv.className = `message ${sender}-message`; const formattedText = this._createHyperlinks(text); const contentDiv = document.createElement('div'); contentDiv.innerHTML = formattedText.replace(/\n/g, '<br>'); messageDiv.appendChild(contentDiv); if (options.length > 0) { options.forEach(result => { const button = document.createElement('button'); button.className = 'option-button'; button.textContent = result.item.question; button.onclick = () => { this._addUserMessage(result.item.question); this._showTypingIndicator(); setTimeout(() => { this._addBotMessage(result.item.answer); }, 400); }; messageDiv.appendChild(button); }); } this.elements.chatArea.appendChild(messageDiv); this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight; }
+            _addUserMessage(text) { this._addMessage(text, 'user'); }
+            _addBotMessage(text, options = []) { this._removeTypingIndicator(); this._addMessage(text, 'bot', options); }
+            _showTypingIndicator() { this._removeTypingIndicator(); const typingDiv = document.createElement('div'); typingDiv.id = 'typingIndicator'; typingDiv.className = 'message bot-message'; typingDiv.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>'; this.elements.chatArea.appendChild(typingDiv); this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight; }
+            _removeTypingIndicator() { const indicator = document.getElementById('typingIndicator'); if (indicator) indicator.remove(); }
+            _updateStatus(text, status) { this.elements.statusText.textContent = text; this.elements.statusDot.className = 'status-dot'; if (status !== 'success') this.elements.statusDot.classList.add(status); }
+            async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 3); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
+            async _saveToDatabase(value,key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readwrite');tx.objectStore(this.config.STORE_NAME).put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+            async _getFromDatabase(key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readonly');const request=tx.objectStore(this.config.STORE_NAME).get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+            _createHyperlinks(text) { if (!text) return ''; const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig; return text.replace(urlRegex, (url) => { const link = url.startsWith('www.') ? `https://` + url : url; return `<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`; }); }
+            _processQuery(text) { if (!text || typeof nlp === 'undefined') return text.toLowerCase().replace(/[^\w\s]/gi, ''); let doc = nlp(text); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
+            _parseCSV(csvText) { const rows = []; let currentRow = []; let currentField = ''; let inQuotedField = false; csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n'); for (let i = 0; i < csvText.length; i++) { const char = csvText[i]; if (inQuotedField) { if (char === '"') { if (i + 1 < csvText.length && csvText[i + 1] === '"') { currentField += '"'; i++; } else { inQuotedField = false; } } else { currentField += char; } } else { switch (char) { case ',': currentRow.push(currentField); currentField = ''; break; case '\n': currentRow.push(currentField); rows.push(currentRow); currentRow = []; currentField = ''; break; case '"': if (currentField === '') { inQuotedField = true; } else { currentField += char; } break; default: currentField += char; } } } if (currentField || currentRow.length > 0) { currentRow.push(currentField); rows.push(currentRow); } if (rows.length > 0 && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') { rows.pop(); } return rows; }
+            _toggleSearchMode() { this.state.isSearchMode = !this.state.isSearchMode; document.body.classList.toggle('search-mode-active'); if (this.state.isSearchMode) { this.elements.viewToggleText.textContent = "Voltar ao Chat"; this.elements.viewToggleBtn.classList.add('active'); this._populateKbList(); } else { this.elements.viewToggleText.textContent = "Modo Busca"; this.elements.viewToggleBtn.classList.remove('active'); } }
+            _populateKbList(filter = '') { const lowerFilter = filter.toLowerCase(); const filteredData = this.state.qaData.filter(item => item.question.toLowerCase().includes(lowerFilter)); this.elements.kbQuestionList.innerHTML = filteredData.map((item, index) => `<button class="kb-question-item" data-index="${this.state.qaData.indexOf(item)}">${item.question}</button>`).join(''); if (filter) { this.elements.kbAnswerArea.innerHTML = `<div class="kb-answer-placeholder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Selecione uma pergunta na lista para ver a resposta aqui.</div>`; } }
+            _displayKbAnswer(index) { if (index < 0 || index >= this.state.qaData.length) return; const item = this.state.qaData[index]; const formattedAnswer = this._createHyperlinks(item.answer).replace(/\n/g, '<br>'); this.elements.kbAnswerArea.innerHTML = `<h2>${item.question}</h2><p>${formattedAnswer}</p>`; }
+            _showAddQuestionButtons() { const messageDiv = this.elements.chatArea.querySelector('.message:last-child'); if (!messageDiv) return; const buttonsContainer = document.createElement('div'); buttonsContainer.className = 'action-buttons'; const yesButton = document.createElement('button'); yesButton.className = 'action-button yes'; yesButton.textContent = 'Sim, sugerir'; yesButton.onclick = () => { this._submitQuestionToForm(this.state.lastUnansweredQuestion); buttonsContainer.innerHTML = `<p style="font-size: 0.9em; color: var(--phoenix-text-secondary); margin-top: 0.5rem;">Obrigado!</p>`; }; const noButton = document.createElement('button'); noButton.className = 'action-button no'; noButton.textContent = 'Não'; noButton.onclick = () => { buttonsContainer.remove(); }; buttonsContainer.appendChild(yesButton); buttonsContainer.appendChild(noButton); messageDiv.appendChild(buttonsContainer); }
+            async _submitQuestionToForm(question) { if (!question) return; const formData = new FormData(); formData.append('entry.2126538361', question); try { await fetch(this.config.SUGGESTION_FORM_URL, { method: 'POST', mode: 'no-cors', body: formData }); this._addBotMessage("Obrigado por contribuir! Sua pergunta foi enviada para nossa equipe."); } catch (error) { console.error("Erro ao enviar pergunta:", error); this._addBotMessage("Houve um erro ao enviar sua pergunta."); } this.state.lastUnansweredQuestion = null; }
         }
         document.addEventListener('DOMContentLoaded', () => {
             window.ChurnAssist = new ChurnAssist();

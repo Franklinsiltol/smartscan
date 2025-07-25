@@ -58,7 +58,8 @@
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
         #submitSuggestionBtn { background: var(--phoenix-primary); color: #fff; font-weight: 600; }
         .scoped-view #teamsList { display: none; }
-        .scoped-view #viewToggleBtn { display: none; } 
+        .scoped-view #viewToggleBtn, .scoped-view .settings-toggle, .scoped-view .command-button, .scoped-view #suggestButton { opacity: 0.5; pointer-events: none; }
+        .scoped-view.team-loaded #viewToggleBtn, .scoped-view.team-loaded .settings-toggle, .scoped-view.team-loaded .command-button, .scoped-view.team-loaded #suggestButton { opacity: 1; pointer-events: all; }
 
         .main-view { width: 100%; display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
@@ -154,7 +155,7 @@
             <div id="teamsSection" class="sidebar-section">
                 <div class="sidebar-title">Times</div>
                 <div id="teamsListContainer">
-                    <!-- Links dos times serão inseridos aqui pelo JS -->
+                    <!-- Links/info dos times serão inseridos aqui pelo JS -->
                 </div>
             </div>
 
@@ -287,9 +288,10 @@
                     this.state.activeTeam = urlParams.get('time');
                     
                     this._bindBaseElements();
+                    this._setupBaseEventListeners();
+                    
                     await this._fetchAndUpdateData(); 
                     this._setupView();
-                    this._setupEventListeners(); 
                 } catch (error) { 
                     console.error("Falha na inicialização crítica:", error); 
                     if(this.elements.statusText) this._updateStatus("Erro crítico", 'error'); 
@@ -313,6 +315,7 @@
                     this._applyTeamFilter(this.state.activeTeam);
                     this._renderTemplate('chatTemplate');
                     this._rebindDynamicElements();
+                    this._setupDynamicEventListeners();
                     this._addBotMessage(`Olá! Sou o ChurnAssist. Conectado ao time: ${this.state.activeTeam}. Como posso ajudar?`);
                 } else {
                     this._renderTemplate('placeholderTemplate');
@@ -338,20 +341,22 @@
                 this.elements.viewToggleText = document.getElementById('viewToggleText');
             }
             
-            _setupEventListeners(){ 
+            _setupBaseEventListeners(){ 
                 this.elements.menuToggle.addEventListener('click', () => { this.elements.sidebar.classList.add('sidebar-open'); this.elements.mobileOverlay.classList.add('active'); });
                 this.elements.mobileOverlay.addEventListener('click', () => { this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); });
+            }
 
-                if (this.state.activeTeam) {
-                    this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
-                    this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
-                    this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
-                    this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
-                    this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
-                    this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question);}});
-                    this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
-                    this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
-                }
+            _setupDynamicEventListeners() {
+                if (!this.state.activeTeam) return;
+
+                this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
+                this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
+                this.elements.dashboardButton.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'flex'; }); 
+                this.elements.closeDashboardBtn.addEventListener('click', () => { this.elements.dashboardModal.style.display = 'none'; }); 
+                this.elements.suggestButton.addEventListener('click', () => this.elements.suggestionForm.classList.toggle('active'));
+                this.elements.submitSuggestionBtn.addEventListener('click',() => { const question=this.elements.suggestionTextarea.value.trim(); if(question){this._submitQuestionToForm(question);}});
+                this.elements.commandButtons.forEach(button => { button.addEventListener('click', () => { const command = button.dataset.command; this.elements.questionInput.value = command; this._handleQuestion(); this.elements.sidebar.classList.remove('sidebar-open'); this.elements.mobileOverlay.classList.remove('active'); }); });
+                this.elements.viewToggleBtn.addEventListener('click', () => this._toggleSearchMode());
             }
 
             _renderTemplate(templateId) {
@@ -377,15 +382,11 @@
                 } else {
                     this._renderTemplate('chatTemplate');
                     this._rebindDynamicElements();
-                    this._setupChatEventListeners();
+                    this._setupDynamicEventListeners();
                     this.elements.viewToggleText.textContent = "Modo Busca";
                     this.elements.viewToggleBtn.classList.remove('active');
                     this._addBotMessage(`Você está no modo Chat do time: ${this.state.activeTeam}.`);
                 }
-            }
-             _setupChatEventListeners() {
-                this.elements.askButton.addEventListener('click', () => this._handleQuestion());
-                this.elements.questionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this._handleQuestion(); });
             }
             
             _populateKbList(filter = '') {
@@ -534,7 +535,7 @@
             _removeTypingIndicator(){const indicator=document.getElementById('typingIndicator');if(indicator)indicator.remove();}
             _updateStatus(text,status){if(!this.elements.statusText) return; this.elements.statusText.textContent=text;this.elements.statusDot.className='status-dot';if(status!=='success')this.elements.statusDot.classList.add(status);}
             _createHyperlinks(text){if(!text)return'';const urlRegex=/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;return text.replace(urlRegex,(url)=>{const link=url.startsWith('www.')?`https://`+url:url;return`<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`;});}
-            _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
+             _parseCSV(csvText){const rows=[];let currentRow=[];let currentField='';let inQuotedField=false;csvText=csvText.replace(/\r\n/g,'\n').replace(/\r/g,'\n');for(let i=0;i<csvText.length;i++){const char=csvText[i];if(inQuotedField){if(char==='"'){if(i+1<csvText.length&&csvText[i+1]==='"'){currentField+='"';i++;}else{inQuotedField=false;}}else{currentField+=char;}}else{switch(char){case',':currentRow.push(currentField);currentField='';break;case'\n':currentRow.push(currentField);rows.push(currentRow);currentRow=[];currentField='';break;case'"':if(currentField===''){inQuotedField=true;}else{currentField+=char;}break;default:currentField+=char;}}}if(currentField||currentRow.length>0){currentRow.push(currentField);rows.push(currentRow);}if(rows.length>0&&rows[rows.length-1].length===1&&rows[rows.length-1][0]===''){rows.pop();}return rows;}
             _processQuery(text) { if (!text) return text.toLowerCase(); let doc = nlp(text.toLowerCase()); doc.normalize('heavy'); let terms = doc.nouns().out('array'); terms = terms.concat(doc.verbs().out('array')); terms = terms.concat(doc.adjectives().out('array')); if (terms.length === 0) { return doc.text('reduced'); } return terms.join(' '); }
         }
         document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });

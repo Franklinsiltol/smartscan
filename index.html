@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v3.0 - URL DIRECTORY FINAL --- */
+        /* --- PROJETO PHOENIX v3.1 - URL SCOPED + FILTERS --- */
         :root {
             --phoenix-bg: #0D1117;
             --phoenix-bg-gradient: radial-gradient(ellipse 80% 80% at 50% -20%,rgba(120,119,198,0.3), hsla(0,0%,100%,0));
@@ -49,9 +49,10 @@
         #suggestionForm.active { display: flex; }
         #suggestionTextarea { width: 100%; min-height: 80px; background: rgba(34,39,46,0.8); border: 1px solid var(--phoenix-border); border-radius: 8px; padding: 0.75rem; color: var(--phoenix-text-primary); resize: vertical; }
         #submitSuggestionBtn { background: var(--phoenix-primary); color: #fff; font-weight: 600; }
-        .scoped-view #teamsList { display: none; }
-        .scoped-view #allTeamsBtn { display: none; }
-
+        .scoped-view #teamsList, .scoped-view #allTeamsBtn { display: none; }
+        .scoped-view #currentTeamDisplay { display: block; }
+        #currentTeamDisplay { display: none; }
+        
         .main-view { width: 100%; display: flex; flex-direction: column; height: 100vh; background: transparent; }
         header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--phoenix-border); display: flex; justify-content: space-between; align-items: center; background: rgba(13, 17, 23, 0.7); backdrop-filter: blur(12px); flex-shrink: 0; }
         .menu-toggle { display: flex; background: transparent; border: none; color: var(--phoenix-text-secondary); padding: 0; cursor: pointer; }
@@ -85,7 +86,6 @@
         .input-area { display: flex; align-items: center; gap: 1rem; }
         #questionInput { flex-grow: 1; padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--phoenix-border); background-color: rgba(34, 39, 46, 0.8); color: var(--phoenix-text-primary); font-family: 'Inter', sans-serif; font-size: 1rem; outline: none; transition: all 0.2s; }
         #questionInput:focus { border-color: var(--phoenix-primary); box-shadow: 0 0 0 3px var(--phoenix-primary-glow); }
-        #questionInput:disabled { background-color: rgba(34,39,46,0.4); cursor: not-allowed; }
         #askButton { background: var(--phoenix-primary); color: #fff; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; border: none; }
         .status-footer { padding-top: 1rem; font-size: 0.8rem; color: var(--phoenix-text-secondary); display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; }
         .status-footer svg { width: 14px; height: 14px; }
@@ -311,7 +311,6 @@
             }
 
             _rebindAndSetupDynamicElements() {
-                // Rebind all elements that are inside a template
                 this.elements.questionInput = document.getElementById('questionInput'); 
                 this.elements.askButton = document.getElementById('askButton'); 
                 this.elements.chatArea = document.getElementById('chatArea'); 
@@ -336,7 +335,7 @@
             }
             
             _setupDynamicEventListeners() {
-                if (!this.state.activeTeam || !this.elements.askButton) return;
+                if (!this.state.activeTeam) return;
 
                 this.elements.askButton.addEventListener('click',()=>this._handleQuestion()); 
                 this.elements.questionInput.addEventListener('keypress',(e)=>{if(e.key==='Enter')this._handleQuestion();}); 
@@ -360,6 +359,7 @@
                 this.state.isSearchMode = !this.state.isSearchMode;
                 if (this.state.isSearchMode) {
                     this._renderTemplate('kbTemplate');
+                    this._rebindAndSetupDynamicElements();
                     this.elements.kbSearchInput = document.getElementById('kbSearchInput');
                     this.elements.kbQuestionList = document.getElementById('kbQuestionList');
                     this.elements.kbAnswerArea = document.getElementById('kbAnswerArea');

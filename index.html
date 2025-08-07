@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChurnAssist - Phoenix</title>
+    <title>SumUpAssist - Phoenix</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1-H-um4lnsC7fmbqtHNgX38eK8270SYOE">
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0"></script>
@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v3.6 - PREPARAÇÃO PARA INTEGRAÇÕES --- */
+        /* --- PROJETO PHOENIX v3.7 - SumUpAssist --- */
         :root {
             /* TEMA ESCURO (PADRÃO) */
             --phoenix-bg: #0D1117;
@@ -176,7 +176,7 @@
         <aside class="sidebar" id="sidebar">
             <div class="logo">
                 <img src="https://lh3.googleusercontent.com/d/1tG7oc1T5Xd3f1vZ267xPCX9k2SVrfNz1" alt="Logo" class="logo-icon">
-                <div class="logo-text">ChurnAssist</div>
+                <div class="logo-text">SumUpAssist</div>
             </div>
             
             <div class="sidebar-section" id="teamsSection">
@@ -290,33 +290,15 @@
         // API MOCK: Para desenvolvimento local. Ignora se a API real do Google estiver presente.
         if (typeof google === 'undefined') {
             console.warn("MOCKING google.script.run API. App Script not available.");
-            window.google = {
-                script: {
-                    run: new Proxy({}, {
-                        get(target, prop) {
-                            return (...args) => {
-                                console.log(`Mocked google.script.run.${prop} called with:`, args);
-                                const mock = {
-                                    withSuccessHandler: function(callback) {
-                                        // Simula sucesso após um pequeno atraso
-                                        setTimeout(() => callback("Mock Success!"), 500);
-                                        return this;
-                                    },
-                                    withFailureHandler: function(callback) { return this; }
-                                };
-                                return mock;
-                            };
-                        }
-                    })
-                }
-            };
+            window.google = { script: { run: new Proxy({}, { get(target, prop) { return (...args) => { console.log(`Mocked google.script.run.${prop} called with:`, args); const mock = { withSuccessHandler: function(callback) { setTimeout(() => callback("Mock Success!"), 500); return this; }, withFailureHandler: function(callback) { return this; } }; return mock; }; } }) } };
         }
 
-        class ChurnAssist {
+        class SumUpAssist {
             constructor() {
                 this.config = {
                     SHEET_ID: "1pgoYg76gutqLnOlsk3mN40HfzN9n-x_6oJQcfkZEBzY", SHEET_NAME: "Perguntas", NOTIFICATION_SHEET_NAME: "Notificações",
-                    DB_NAME: "ChurnAssistDB", STORE_NAME: "KnowledgeBase", ADVANCED_MODE_KEY: 'isAdvancedModeActive', THEME_KEY: 'appTheme',
+                    SUGGESTION_FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSdK1OUPcBGtMRdWQz4JhyeQBuet-wXbEQ4CyAX07f6rHSvdyA/formResponse",
+                    DB_NAME: "SumUpAssistDB", STORE_NAME: "KnowledgeBase", ADVANCED_MODE_KEY: 'isAdvancedModeActive', THEME_KEY: 'appTheme',
                 };
                 this.elements = {
                     questionInput: document.getElementById('questionInput'), askButton: document.getElementById('askButton'), chatArea: document.getElementById('chatArea'), statusText: document.getElementById('statusText'),
@@ -362,33 +344,25 @@
                 this.elements.themeToggleBtn.addEventListener('click', () => this._handleThemeToggle());
             }
 
-            // --- Lógica de Integração ---
-            _handleSuggestionSubmit() {
+            async _handleSuggestionSubmit() {
                 const question = this.elements.suggestionTextarea.value.trim();
                 if (!question) return;
-                this._showTypingIndicator();
-                google.script.run
-                    .withSuccessHandler(this._onSuggestionSuccess.bind(this))
-                    .withFailureHandler(this._onApiFailure.bind(this))
-                    .submitSuggestion(question);
+                const formData = new FormData();
+                formData.append('entry.2126538361', question); // Ajuste o entry ID se necessário
+                try {
+                    await fetch(this.config.SUGGESTION_FORM_URL, { method: 'POST', mode: 'no-cors', body: formData });
+                    this._onSuggestionSuccess();
+                } catch (error) { this._onApiFailure(error); }
             }
 
-            _onSuggestionSuccess(response) {
+            _onSuggestionSuccess() {
                 this.elements.suggestionTextarea.value = '';
                 this.elements.suggestionForm.classList.remove('active');
                 this._addBotMessage("Obrigado! Sua sugestão foi enviada para análise.");
             }
 
-            _onTicketSuccess(response) {
-                this._addBotMessage("✅ Ticket criado com sucesso! Nossa equipe entrará em contato em breve.");
-            }
-
-            _onApiFailure(error) {
-                console.error("Falha na chamada ao Apps Script:", error);
-                this._addBotMessage("❌ Desculpe, ocorreu um erro de comunicação. Por favor, tente novamente mais tarde.");
-            }
-            
-            // --- Fim da Lógica de Integração ---
+            _onTicketSuccess() { this._addBotMessage("✅ Ticket criado com sucesso! Nossa equipe entrará em contato em breve."); }
+            _onApiFailure(error) { console.error("Falha na API:", error); this._addBotMessage("❌ Desculpe, ocorreu um erro de comunicação. Por favor, tente novamente mais tarde."); }
             
             async _applyInitialTheme() { const savedTheme = await this._getFromDatabase(this.config.THEME_KEY); if (savedTheme === 'light') { document.body.classList.add('light-theme'); } }
             async _handleThemeToggle() { document.body.classList.toggle('light-theme'); const newTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark'; await this._saveToDatabase(newTheme, this.config.THEME_KEY); }
@@ -401,7 +375,7 @@
             async _fetchAndDisplayNotification() { const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.NOTIFICATION_SHEET_NAME)}&t=${Date.now()}`; try { const response = await fetch(url); if (!response.ok) { return; } const csvText = await response.text(); if (!csvText.trim()) return; const parsedData = this._parseCSV(csvText); const notificationMessage = parsedData?.[0]?.[0]?.trim(); if (notificationMessage) { this._addNotificationMessage(notificationMessage); } } catch (error) { console.error("Não foi possível buscar a notificação:", error); } }
             _checkForUrlFilter() { const urlParams = new URLSearchParams(window.location.search); const teamFromUrl = urlParams.get('team'); if (teamFromUrl) { this.state.urlFilteredTeam = decodeURIComponent(teamFromUrl); } }
             _setupFilteredTeamView(teamName) { this.elements.allTeamsBtn.style.display = 'none'; this.elements.teamsList.style.display = 'none'; const filteredTeamDisplay = document.createElement('div'); filteredTeamDisplay.className = 'sidebar-button active'; filteredTeamDisplay.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> <span>${teamName}</span> `; const backButton = document.createElement('a'); backButton.href = window.location.origin + window.location.pathname; backButton.className = 'sidebar-button'; backButton.innerHTML = ` <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg> <span>Ver todos os times</span> `; this.elements.teamsSection.appendChild(filteredTeamDisplay); this.elements.teamsSection.appendChild(backButton); }
-            async _fetchAndUpdateData(isManualUpdate = false) { if (!isManualUpdate && !this.state.isModelLoading) { this._updateStatus("Atualizando base...", 'loading'); } const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`; try { const response = await fetch(url); if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`); const csvText = await response.text(); const parsedData = this._parseCSV(csvText); const headers = parsedData[0].map(h => h.trim().toLowerCase()); const questionIndex = headers.indexOf("pergunta"), answerIndex = headers.indexOf("resposta"), teamIndex = headers.indexOf("time"); if (questionIndex === -1 || answerIndex === -1 || teamIndex === -1) { throw new Error('Colunas "pergunta", "resposta" e "time" são obrigatórias.'); } this.state.allQaData = parsedData.slice(1).map(row => ({ question: row[questionIndex]?.trim() || "", answer: row[answerIndex]?.trim() || "", team: row[teamIndex]?.trim() || "Geral", processedQuestion: this._processQuery(row[questionIndex]?.trim() || "") })).filter(item => item.question && item.answer); if (!this.state.urlFilteredTeam) { this._populateTeamsList(); } const initialFilter = this.state.urlFilteredTeam || 'Todos'; this._applyTeamFilter(initialFilter); if (!isManualUpdate) { const welcomeMessage = this.state.urlFilteredTeam ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?` : "Olá! Sou o ChurnAssist. Como posso ajudar?"; if (!this.state.isModelLoading) this._addBotMessage(welcomeMessage); await this._fetchAndDisplayNotification(); } if (!this.state.isModelLoading) { this._updateStatus('Pronto', 'success'); } } catch(error) { console.error("Erro ao buscar dados:", error); this._updateStatus("Erro ao carregar", 'error'); this._addBotMessage("Não consegui carregar a base de conhecimento. Verifique o console para mais detalhes."); } }
+            async _fetchAndUpdateData(isManualUpdate = false) { if (!isManualUpdate && !this.state.isModelLoading) { this._updateStatus("Atualizando base...", 'loading'); } const url = `https://docs.google.com/spreadsheets/d/${this.config.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(this.config.SHEET_NAME)}&t=${Date.now()}`; try { const response = await fetch(url); if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`); const csvText = await response.text(); const parsedData = this._parseCSV(csvText); const headers = parsedData[0].map(h => h.trim().toLowerCase()); const questionIndex = headers.indexOf("pergunta"), answerIndex = headers.indexOf("resposta"), teamIndex = headers.indexOf("time"); if (questionIndex === -1 || answerIndex === -1 || teamIndex === -1) { throw new Error('Colunas "pergunta", "resposta" e "time" são obrigatórias.'); } this.state.allQaData = parsedData.slice(1).map(row => ({ question: row[questionIndex]?.trim() || "", answer: row[answerIndex]?.trim() || "", team: row[teamIndex]?.trim() || "Geral", processedQuestion: this._processQuery(row[questionIndex]?.trim() || "") })).filter(item => item.question && item.answer); if (!this.state.urlFilteredTeam) { this._populateTeamsList(); } const initialFilter = this.state.urlFilteredTeam || 'Todos'; this._applyTeamFilter(initialFilter); if (!isManualUpdate) { const welcomeMessage = this.state.urlFilteredTeam ? `Olá! Você está na área do time <strong>${this.state.urlFilteredTeam}</strong>. Como posso ajudar?` : "Olá! Sou o SumUpAssist. Como posso ajudar?"; if (!this.state.isModelLoading) this._addBotMessage(welcomeMessage); await this._fetchAndDisplayNotification(); } if (!this.state.isModelLoading) { this._updateStatus('Pronto', 'success'); } } catch(error) { console.error("Erro ao buscar dados:", error); this._updateStatus("Erro ao carregar", 'error'); this._addBotMessage("Não consegui carregar a base de conhecimento. Verifique o console para mais detalhes."); } }
             _applyTeamFilter(teamName) { this.state.activeTeamFilter = teamName; if (teamName === 'Todos') { this.state.qaData = [...this.state.allQaData]; } else { this.state.qaData = this.state.allQaData.filter(item => item.team.split(',').map(t => t.trim()).includes(teamName)); } this._initSearchEngine(); document.querySelectorAll('.team-filter').forEach(btn => btn.classList.toggle('active', btn.dataset.teamName === teamName)); if (!this.state.isModelLoading && this.elements.chatArea) { this.elements.chatArea.innerHTML = ''; } if (this.state.isSearchMode) { this._populateKbList(); } }
             _populateTeamsList() { const teams = new Set(); this.state.allQaData.forEach(item => { item.team.split(',').forEach(t => { const trimmedTeam = t.trim(); if (trimmedTeam) teams.add(trimmedTeam); }); }); this.elements.teamsList.innerHTML = [...teams].sort().map(team => ` <button class="sidebar-button team-filter" data-team-name="${team}"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> <span>${team}</span> </button> `).join(''); }
             _initSearchEngine() { if (!this.state.qaData || this.state.qaData.length === 0) { this.state.fuse = null; return; } this.state.fuse = new Fuse(this.state.qaData, { keys: ['processedQuestion'], includeScore: true, threshold: 0.4 }); }
@@ -412,7 +386,7 @@
             _showTypingIndicator() { this._removeTypingIndicator(); const typingDiv = document.createElement('div'); typingDiv.id = 'typingIndicator'; typingDiv.className = 'message bot-message'; typingDiv.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>'; this.elements.chatArea.appendChild(typingDiv); this.elements.chatArea.scrollTop = this.elements.chatArea.scrollHeight; }
             _removeTypingIndicator() { const indicator = document.getElementById('typingIndicator'); if (indicator) indicator.remove(); }
             _updateStatus(text, status) { this.elements.statusText.textContent = text; this.elements.statusDot.className = 'status-dot'; if (status !== 'success') this.elements.statusDot.classList.add(status); }
-            async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 3); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
+            async _initDatabase() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.config.DB_NAME, 1); request.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains(this.config.STORE_NAME)) { db.createObjectStore(this.config.STORE_NAME); } }; request.onsuccess = (e) => { this.state.db = e.target.result; resolve(); }; request.onerror = (e) => { console.error("Erro no IndexedDB:", e.target.error); reject(e.target.error); }; }); }
             async _saveToDatabase(value,key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readwrite');tx.objectStore(this.config.STORE_NAME).put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
             async _getFromDatabase(key){return new Promise((resolve,reject)=>{const tx=this.state.db.transaction(this.config.STORE_NAME,'readonly');const request=tx.objectStore(this.config.STORE_NAME).get(key);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
             _createHyperlinks(text) { if (!text) return ''; const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig; return text.replace(urlRegex, (url) => { const link = url.startsWith('www.') ? `https://` + url : url; return `<a href="${link}" target="_blank" rel="noopener noreferrer">${url}</a>`; }); }
@@ -431,8 +405,39 @@
                 buttonsContainer.appendChild(yesButton); buttonsContainer.appendChild(ticketButton); buttonsContainer.appendChild(noButton);
                 messageDiv.appendChild(buttonsContainer);
             }
+
+            // --- API para o Slack/Browserless ---
+            async buscarRespostaParaAPI(pergunta, modo = 'padrao') {
+                if ((modo === 'padrao' && !this.state.fuse) || (modo === 'avancado' && !this.state.isModelLoaded)) {
+                    return { error: 'Motor de busca não está pronto.' };
+                }
+                try {
+                    let results = [];
+                    if (modo === 'avancado' && this.state.isModelLoaded) {
+                        results = await this._findSimilarSentences(pergunta);
+                    } else {
+                        const fuseResults = this.state.fuse.search(this._processQuery(pergunta));
+                        results = fuseResults.map(r => ({ item: r.item, score: 1 - r.score }));
+                    }
+                    if (results.length > 0) {
+                        return { sucesso: true, perguntaEncontrada: results[0].item.question, resposta: results[0].item.answer, score: results[0].score };
+                    } else {
+                        return { sucesso: false, mensagem: "Nenhuma resposta encontrada." };
+                    }
+                } catch (error) { console.error("Erro na busca via API:", error); return { error: `Erro interno: ${error.message}` }; }
+            }
         }
-        document.addEventListener('DOMContentLoaded', () => { window.ChurnAssist = new ChurnAssist(); });
+
+        document.addEventListener('DOMContentLoaded', () => { window.SumUpAssist = new SumUpAssist(); });
+
+        // Função global para ser chamada pelo Browserless
+        async function executarBuscaRemota(pergunta, modo) {
+            if (window.SumUpAssist) {
+                const resposta = await window.SumUpAssist.buscarRespostaParaAPI(pergunta, modo);
+                return JSON.stringify(resposta);
+            }
+            return JSON.stringify({ error: "SumUpAssist não inicializado." });
+        }
     </script>
 </body>
 </html>

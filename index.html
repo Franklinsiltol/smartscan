@@ -23,11 +23,11 @@
             --phoenix-primary: #33A0FF;
             --phoenix-primary-glow: rgba(51, 160, 255, 0.3);
             --phoenix-secondary: #8B949E;
-            --phoenix-border: rgba(255, 255, 255, 0.1);
+            --phoenix-border: rgba(255, 255, 255, 0.15); /* Borda um pouco mais visível */
             --phoenix-text-primary: #C9D1D9;
             --phoenix-text-secondary: #8B949E;
             --phoenix-green: #238636;
-            --logo-bg: #21262d; /* Fundo do logo no tema escuro */
+            --logo-bg: #0D1117; 
         }
 
         body.light-theme {
@@ -43,7 +43,7 @@
             --phoenix-text-primary: #24292E;
             --phoenix-text-secondary: #586069;
             --phoenix-green: #22863A;
-            --logo-bg: #FFFFFF; /* Fundo do logo no tema claro */
+            --logo-bg: #FFFFFF;
         }
 
         html, body { height: 100%; overflow: hidden; }
@@ -59,18 +59,23 @@
 
         .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: 260px; z-index: 11; transform: translateX(-100%); background: var(--phoenix-sidebar); border-right: 1px solid var(--phoenix-border); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s, border-right 0.3s; overflow-y: auto; }
         .sidebar.sidebar-open { transform: translateX(0); }
-        .logo { display: flex; align-items: center; justify-content: center; /* Centraliza o logo */ flex-shrink: 0; padding: 1rem 0; }
+        .logo { display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding-bottom: 1rem; }
         
-        /* NOVO ESTILO DO LOGO */
         .logo-icon {
-            width: 72px; /* Tamanho aumentado */
-            height: 72px;
-            border-radius: 50%; /* Transforma em círculo */
-            padding: 8px; /* Espaçamento interno */
-            background-color: var(--logo-bg); /* Fundo sólido para contraste */
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transition: background-color 0.3s;
-            object-fit: contain; /* Garante que a imagem caiba sem distorcer */
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            padding: 10px;
+            background-color: var(--logo-bg);
+            border: 1px solid var(--phoenix-border);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            object-fit: contain;
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .logo-icon:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 8px 25px var(--phoenix-primary-glow);
         }
         
         .sidebar-section { display: flex; flex-direction: column; gap: 0.5rem; }

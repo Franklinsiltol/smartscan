@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- PROJETO PHOENIX v4.0 - dawns Logo Final --- */
+        /* --- PROJETO PHOENIX v4.1 - Logo Consistente --- */
         :root {
             /* TEMA ESCURO (PADRÃO) */
             --phoenix-bg: #0D1117;
@@ -23,11 +23,10 @@
             --phoenix-primary: #33A0FF;
             --phoenix-primary-glow: rgba(51, 160, 255, 0.3);
             --phoenix-secondary: #8B949E;
-            --phoenix-border: rgba(255, 255, 255, 0.15); /* Borda um pouco mais visível */
+            --phoenix-border: rgba(255, 255, 255, 0.15);
             --phoenix-text-primary: #C9D1D9;
             --phoenix-text-secondary: #8B949E;
             --phoenix-green: #238636;
-            --logo-bg: #0D1117; 
         }
 
         body.light-theme {
@@ -43,7 +42,6 @@
             --phoenix-text-primary: #24292E;
             --phoenix-text-secondary: #586069;
             --phoenix-green: #22863A;
-            --logo-bg: #FFFFFF;
         }
 
         html, body { height: 100%; overflow: hidden; }
@@ -66,7 +64,7 @@
             height: 80px;
             border-radius: 50%;
             padding: 10px;
-            background-color: var(--logo-bg);
+            background-color: #FFFFFF; /* Fundo sempre branco */
             border: 1px solid var(--phoenix-border);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             object-fit: contain;
@@ -306,7 +304,7 @@
     </div>
 
     <script>
-        // API MOCK: Para desenvolvimento local. Ignora se a API real do Google estiver presente.
+        // API MOCK: Para desenvolvimento local.
         if (typeof google === 'undefined') {
             console.warn("MOCKING google.script.run API. App Script not available.");
             window.google = { script: { run: new Proxy({}, { get(target, prop) { return (...args) => { console.log(`Mocked google.script.run.${prop} called with:`, args); const mock = { withSuccessHandler: function(callback) { setTimeout(() => callback("Mock Success!"), 500); return this; }, withFailureHandler: function(callback) { return this; } }; return mock; }; } }) } };
